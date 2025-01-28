@@ -8,15 +8,20 @@
       
       <div class="flex items-center mb-4">
         <input type="password" id="password" placeholder="Password" class="w-full p-4 mr-2 bg-transparent border border-white rounded-xl text-white placeholder-white focus:outline-none">
-        <img src="@/assets/eye-close.png" alt="eye" class="w-8 h-8 cursor-pointer">
+        <img :src="eyeIcon"
+            alt="eye-icon"
+            @click="togglePasswordVisibility"  
+            class="w-8 h-8 cursor-pointer">
       </div>
       
-      <span class="text-white block text-center mb-4"><a href="http://">Forgot Password?</a></span>
+      <span class="text-white block text-center mb-4">
+        <router-link to="/forgotpassword" class="text-white">Forgot Password?</router-link>
+      </span>
       
       <div class="flex justify-center space-x-4 mb-4">
         <button class="w-1/2 py-2 bg-transparent border-2 border-white text-white rounded-xl hover:bg-black hover:bg-opacity-20 transition duration-300">Login</button>
         <button class="w-1/2 py-2 bg-transparent border-2 border-white text-white rounded-xl hover:bg-black hover:bg-opacity-20 transition duration-300">
-          <a href="" class="text-white">Signup</a>
+            <router-link to="/signup" class="text-white">Signup</router-link>
         </button>
       </div>
       
@@ -29,8 +34,29 @@
 
 <script>
 export default {
+  data() {
+  return{
+    isPasswordVisible: false,
+  }
+  },
   name: "LoginForm",
+  computed: {
+    
+    eyeIcon() {
+      return this.isPasswordVisible 
+        ? require('@/assets/eye-open.png') 
+        : require('@/assets/eye-close.png');
+    },
+  },
+  methods: {
+    togglePasswordVisibility() {
+      this.isPasswordVisible = !this.isPasswordVisible;
+      const passwordField = document.getElementById('password');
+      passwordField.type = this.isPasswordVisible ? 'text' : 'password';
+    },
+  },
 };
+
 </script>
 
 
