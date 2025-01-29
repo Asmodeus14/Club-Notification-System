@@ -95,6 +95,7 @@ export default {
         password: '',
       },
       isPasswordVisible: false,
+      Data: [],
     };
   },
   computed: {
@@ -112,8 +113,13 @@ export default {
       axios.post('http://127.0.0.1:5000/api/login', new URLSearchParams(this.formdata), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       })
-      .then(response => console.log(response))
+      .then(response => this.Data = response.data)
       .catch(error => console.log(error));
+      console.log(this.Data);
+      if(this.Data.position=='Admin' )
+      {
+        this.$router.push('/admin');
+      }
     },
   },
 };

@@ -28,13 +28,13 @@ def method_not_allowed(e):
     return jsonify({"error": "Method Not Allowed"}), 405
 
 # ----------------- Database Utility Functions -----------------
-def get_db_connection():
-    conn = sqlite3.connect('./Data/Admin.db')  # SQLite Database
+def get_db_connection(name:str):
+    conn = sqlite3.connect(f'./Data/{name}.db')  # SQLite Database
     conn.row_factory = sqlite3.Row  # To access columns by name
     return conn
 
-def init_db():
-    conn = get_db_connection()
+def init_db_user():
+    conn = get_db_connection(name='users')
     conn.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,6 +47,21 @@ def init_db():
             name Text Not NULL
         )
     ''')
+    conn.commit()
+    conn.close()
+    
+def init_admin_db():
+    conn = get_db_connection(name='admin')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS admin (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            email TEXT NOT NULL,
+            password TEXT NOT NULL,
+            position TEXT NOT NULL
+        )
+        ''')
+    conn.execute("INSERT INTO admin (user_id, email, password, position) VALUES ('Admin', 'Singhabhay3145@gmail.com', ?, 'Admin')", (generate_password_hash('admin12345', salt_length=5),))
     conn.commit()
     conn.close()
 
@@ -63,13 +78,20 @@ def login():
             return jsonify({"error": "Missing required fields"}), 400
 
         # Check database for user
-        conn = get_db_connection()
+        conn = get_db_connection(name='users')
         user = conn.execute('SELECT * FROM users WHERE user_id = ?', (user_id,)).fetchone()
+        conn.close()
+        # Check database for admin
+        conn = get_db_connection(name='admin')
+        admin = conn.execute('SELECT * FROM admin WHERE user_id = ?', (user_id,)).fetchone()
         conn.close()
 
         if user and check_password_hash(user['password'], password):
             logging.info(f"User {user_id} logged in successfully.")
-            return jsonify({"message": "Login successful", "user_id": user_id})
+            return jsonify({"message": "Login successful", "user_id": user_id, "name": user['name'], "position": user['position'], "course": user['course'], "club": user['club']}), 200
+        elif admin and check_password_hash(admin['password'], password):
+            logging.info(f"Admin logged in successfully.")
+            return jsonify({"message": "Login successful", "user_id": user_id, "position": admin['position']}), 200
         else:
             logging.warning(f"Invalid login attempt for user: {user_id}")
             return jsonify({"error": "Invalid credentials"}), 401
@@ -95,7 +117,7 @@ def register():
             return jsonify({"error": "Missing required fields"}), 400
 
         # Check if user already exists
-        conn = get_db_connection()
+        conn = get_db_connection(name='users')
         user = conn.execute('SELECT * FROM users WHERE user_id = ?', (user_id,)).fetchone()
         conn.close()
         if user:
@@ -106,7 +128,7 @@ def register():
         hashed_password = generate_password_hash(password,salt_length=5)
 
         # Save user in the database
-        conn = get_db_connection()
+        conn = get_db_connection(name='users')
         conn.execute('INSERT INTO users (user_id, email, password, position, course, club, name) VALUES (?, ?, ?, ?, ?, ?, ?)',
                      (user_id, email, hashed_password, position, course, club, name))
         conn.commit()
@@ -139,7 +161,8 @@ def forgot_password():
 
 
 # ----------------- Initialize Database -----------------
-init_db()
+init_db_user()
+init_admin_db()
 
 # ----------------- Run the Flask App -----------------
 if __name__ == '__main__':

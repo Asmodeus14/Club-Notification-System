@@ -5,6 +5,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import LoginForm from "@/components/LoginForm.vue";
 import SignupForm from './components/Signup.vue';
 import Forgotpassword from './components/Forgotpassword.vue';
+import AdministratorManager from './components/Admin.vue';
 
 const routes = [
     {
@@ -21,7 +22,12 @@ const routes = [
         path:'/forgotpassword',
         name:'forgotpassword',
         component:Forgotpassword,
-    }
+    },
+    {
+        path:'/admin',
+        name:'admin',
+        component:AdministratorManager,
+    },
 ];
 
 const router = createRouter({
