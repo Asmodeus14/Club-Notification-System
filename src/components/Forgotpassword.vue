@@ -8,7 +8,7 @@
 
                 <div class="form flex flex-col items-center w-full space-y-6">
                     <input type="text"
-                        class=" w-full p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out hover:bg-slate-400 hover:text-amber-50"
+                        class=" w-full p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
                         placeholder="Enter your email">
 
                     <input type="text"

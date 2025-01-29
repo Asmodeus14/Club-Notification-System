@@ -1,6 +1,6 @@
-<template >
+<template>
   <div class="min-h-screen flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-500">
-    <div class="flex flex-col w-1/2 p-5 bg-opacity-10 bg-gray-600 rounded-xl shadow-lg border-3 border-transparent ">
+    <div class="flex flex-col w-full md:w-1/2 lg:w-1/3 p-5 bg-opacity-10 bg-gray-600 rounded-xl shadow-lg border-3 border-transparent">
       <h1 class="text-3xl font-semibold text-white text-center mb-8">Signup Form</h1>
       <form @submit.prevent="submitForm" class="space-y-6">
         
@@ -13,7 +13,7 @@
             name="id" 
             required 
             placeholder="ID" 
-            class="w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
+            class="w-full md:w-4/5 lg:w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
           />
         </div>
         
@@ -26,7 +26,7 @@
             name="Email" 
             required 
             placeholder="Email" 
-            class="w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
+            class="w-full md:w-4/5 lg:w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
           />
         </div>
         
@@ -39,7 +39,7 @@
             name="name" 
             required 
             placeholder="Name" 
-            class="w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
+            class="w-full md:w-4/5 lg:w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
           />
         </div>
         
@@ -52,7 +52,7 @@
             name="club" 
             required 
             placeholder="Club" 
-            class="w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
+            class="w-full md:w-4/5 lg:w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
           />
         </div>
         
@@ -65,7 +65,7 @@
             name="course" 
             required 
             placeholder="Course" 
-            class="w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
+            class="w-full md:w-4/5 lg:w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
           />
         </div>
         
@@ -78,13 +78,13 @@
             name="password" 
             required 
             placeholder="Password" 
-            class="w-1/2 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
+            class="w-full md:w-4/5 lg:w-1/2 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
           />
           <img 
             :src="eyeIcon"
             alt="eye-icon"
             @click="togglePasswordVisibility" 
-            class="relative top-4 -right-4 cursor-pointer w-6 h-6 "
+            class="relative top-4 -right-4 cursor-pointer w-6 h-6"
           />
         </div>
 
@@ -94,9 +94,8 @@
             v-model="position" 
             id="position" 
             name="position"
-            
             required 
-            class="w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out  cursor-pointer placeholder-white"
+            class="w-full md:w-4/5 lg:w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out cursor-pointer placeholder-white"
           >
             <option value="" disabled selected>Position</option>
             <option value="Vetran-Coordinator">Vetran-Coordinator</option>
@@ -104,8 +103,8 @@
             <option value="Student-Coordinator">Student-Coordinator</option>
           </select>
         </div>
-        <span v-if="submissionSuccess" class="text-white text-center  ">
-        Form submitted successfully!
+        <span v-if="submissionSuccess" class="text-white text-center">
+          Form submitted successfully!
         </span>
         <!-- Submit Button -->
         <div class="form-group flex justify-center">
@@ -113,14 +112,12 @@
             id="submit"
             :disabled="isSubmitting"
             type="submit" 
-            class="w-1/5 py-3 mt-5 text-white bg-transparent border-2 border-gray-300 rounded-3xl font-bold transition-all duration-500 ease-in-out hover:bg-purple-700 hover:border-purple-700"
+            class="w-full md:w-1/2 lg:w-1/5 py-3 mt-5 text-white bg-transparent border-2 border-gray-300 rounded-3xl font-bold transition-all duration-500 ease-in-out hover:bg-purple-700 hover:border-purple-700"
           >
             Submit
           </button>
         </div>
       </form>
-      
-
     </div>
   </div>
 </template>
@@ -143,7 +140,6 @@ export default {
   },
   name: "SignupForm",
   computed: {
-    
     eyeIcon() {
       return this.isPasswordVisible 
         ? require('@/assets/eye-open.png') 
@@ -162,7 +158,6 @@ export default {
     async submit() {
       this.isSubmitting = true;
       try {
-        
         console.log("Form submitted", this.$data);
       } catch (error) {
         console.error("Submission failed", error);
@@ -180,12 +175,10 @@ export default {
 </script>
 
 <style scoped>
-
 img {
   transition: transform 0.2s ease-in-out;
 }
 img:hover {
   transform: scale(1.2);
 }
-
 </style>
