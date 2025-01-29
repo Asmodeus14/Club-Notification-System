@@ -12,12 +12,12 @@
             id="ID"
             v-model="formdata.ID"
             required
-            class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+            class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition "
             placeholder="User ID"
           />
           <label 
             for="ID"
-            class="absolute left-4 top-4 text-white text-opacity-80 transition-all peer-placeholder-shown:top-5 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-2 peer-focus:text-sm peer-focus:text-opacity-100"
+            class="absolute left-4 top-4 text-white text-opacity-0 transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-0 peer-focus:text-sm peer-focus:text-opacity-100"
           >User ID</label>
         </div>
 
@@ -33,7 +33,7 @@
           />
           <label 
             for="password"
-            class="absolute left-4 top-4 text-white text-opacity-80 transition-all peer-placeholder-shown:top-5 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-2 peer-focus:text-sm peer-focus:text-opacity-100"
+            class="absolute left-4 top-4 text-white text-opacity-0 transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-0 peer-focus:text-sm peer-focus:text-opacity-100"
           >Password</label>
           <img 
             :src="eyeIcon" 
