@@ -1,184 +1,190 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-500">
-    <div class="flex flex-col w-full md:w-1/2 lg:w-1/3 p-5 bg-opacity-10 bg-gray-600 rounded-xl shadow-lg border-3 border-transparent">
-      <h1 class="text-3xl font-semibold text-white text-center mb-8">Signup Form</h1>
-      <form @submit.prevent="submitForm" class="space-y-6">
-        
+  <div class="min-h-screen flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-500 px-4">
+    <div class="w-full max-w-md bg-white bg-opacity-10 p-8 rounded-2xl shadow-2xl backdrop-blur-lg">
+      <h1 class="text-3xl font-bold text-white text-center mb-2">Create an Account</h1>
+      <p class="text-white text-center mb-6">Join us today!</p>
+
+      <form @submit.prevent="submitForm">
         <!-- ID -->
-        <div class="form-group flex flex-col items-center w-full mb-4">
+        <div class="relative mb-6">
           <input 
             type="text" 
-            v-model="id" 
-            id="id" 
-            name="id" 
-            required 
-            placeholder="ID" 
-            class="w-full md:w-4/5 lg:w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
+            id="id"
+            v-model="formdata.id"
+            required
+            class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+            placeholder="User ID"
           />
+          <label 
+            for="id"
+            class="absolute left-4 top-4 text-white text-opacity-80 transition-all peer-placeholder-shown:top-5 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-2 peer-focus:text-sm peer-focus:text-opacity-100"
+          >User ID</label>
         </div>
-        
+
         <!-- Email -->
-        <div class="form-group flex flex-col items-center w-full mb-4">
+        <div class="relative mb-6">
           <input 
             type="email" 
-            v-model="email" 
-            id="Email" 
-            name="Email" 
-            required 
-            placeholder="Email" 
-            class="w-full md:w-4/5 lg:w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
+            id="email"
+            v-model="formdata.email"
+            required
+            class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+            placeholder="Email"
           />
+          <label 
+            for="email"
+            class="absolute left-4 top-4 text-white text-opacity-80 transition-all peer-placeholder-shown:top-5 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-2 peer-focus:text-sm peer-focus:text-opacity-100"
+          >Email</label>
         </div>
-        
+
         <!-- Name -->
-        <div class="form-group flex flex-col items-center w-full mb-4">
+        <div class="relative mb-6">
           <input 
             type="text" 
-            v-model="name" 
-            id="name" 
-            name="name" 
-            required 
-            placeholder="Name" 
-            class="w-full md:w-4/5 lg:w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
+            id="name"
+            v-model="formdata.name"
+            required
+            class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+            placeholder="Name"
           />
+          <label 
+            for="name"
+            class="absolute left-4 top-4 text-white text-opacity-80 transition-all peer-placeholder-shown:top-5 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-2 peer-focus:text-sm peer-focus:text-opacity-100"
+          >Full Name</label>
         </div>
-        
+
         <!-- Club -->
-        <div class="form-group flex flex-col items-center w-full mb-4">
+        <div class="relative mb-6">
           <input 
             type="text" 
-            v-model="club" 
-            id="club" 
-            name="club" 
-            required 
-            placeholder="Club" 
-            class="w-full md:w-4/5 lg:w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
+            id="club"
+            v-model="formdata.club"
+            required
+            class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+            placeholder="Club"
           />
+          <label 
+            for="club"
+            class="absolute left-4 top-4 text-white text-opacity-80 transition-all peer-placeholder-shown:top-5 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-2 peer-focus:text-sm peer-focus:text-opacity-100"
+          >Club</label>
         </div>
-        
+
         <!-- Course -->
-        <div class="form-group flex flex-col items-center w-full mb-4">
+        <div class="relative mb-6">
           <input 
             type="text" 
-            v-model="course" 
-            id="course" 
-            name="course" 
-            required 
-            placeholder="Course" 
-            class="w-full md:w-4/5 lg:w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
+            id="course"
+            v-model="formdata.course"
+            required
+            class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+            placeholder="Course"
           />
+          <label 
+            for="course"
+            class="absolute left-4 top-4 text-white text-opacity-80 transition-all peer-placeholder-shown:top-5 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-2 peer-focus:text-sm peer-focus:text-opacity-100"
+          >Course</label>
         </div>
-        
-        <!-- Password -->
-        <div class="form-group flex flex-row justify-center w-full mb-4 relative">
+
+        <!-- Password with Toggle -->
+        <div class="relative mb-6">
           <input 
-            type="password" 
-            v-model="password" 
-            id="password" 
-            name="password" 
-            required 
-            placeholder="Password" 
-            class="w-full md:w-4/5 lg:w-1/2 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out"
+            :type="isPasswordVisible ? 'text' : 'password'" 
+            id="password"
+            v-model="formdata.password"
+            required
+            class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+            placeholder="Password"
           />
+          <label 
+            for="password"
+            class="absolute left-4 top-4 text-white text-opacity-80 transition-all peer-placeholder-shown:top-5 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-2 peer-focus:text-sm peer-focus:text-opacity-100"
+          >Password</label>
           <img 
-            :src="eyeIcon"
-            alt="eye-icon"
+            :src="eyeIcon" 
+            alt="eye-icon" 
             @click="togglePasswordVisibility" 
-            class="relative top-4 -right-4 cursor-pointer w-6 h-6"
+            class="absolute right-4 top-4 w-6 h-6 cursor-pointer opacity-80 hover:opacity-100 transition"
           />
         </div>
 
         <!-- Position -->
-        <div class="form-group flex flex-col items-center w-full mb-4">
+        <div class="relative mb-6">
           <select 
-            v-model="position" 
-            id="position" 
-            name="position"
-            required 
-            class="w-full md:w-4/5 lg:w-3/5 p-4 rounded-3xl border-2 border-white text-aliceblue bg-transparent transition-all duration-500 ease-in-out cursor-pointer placeholder-white"
+            v-model="formdata.position"
+            required
+            class="w-full p-4 bg-transparent border border-white rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition cursor-pointer"
           >
             <option value="" disabled selected>Position</option>
-            <option value="Vetran-Coordinator">Vetran-Coordinator</option>
-            <option value="Asistant-Coordinator">Asistant-Coordinator</option>
-            <option value="Student-Coordinator">Student-Coordinator</option>
+            <option value="Vetran-Coordinator">Veteran Coordinator</option>
+            <option value="Assistant-Coordinator">Assistant Coordinator</option>
+            <option value="Student-Coordinator">Student Coordinator</option>
           </select>
         </div>
-        <span v-if="submissionSuccess" class="text-white text-center">
-          Form submitted successfully!
-        </span>
+
         <!-- Submit Button -->
-        <div class="form-group flex justify-center">
-          <button
-            id="submit"
-            :disabled="isSubmitting"
-            type="submit" 
-            class="w-full md:w-1/2 lg:w-1/5 py-3 mt-5 text-white bg-transparent border-2 border-gray-300 rounded-3xl font-bold transition-all duration-500 ease-in-out hover:bg-purple-700 hover:border-purple-700"
-          >
-            Submit
-          </button>
-        </div>
+        <button 
+          type="submit"
+          :disabled="isSubmitting"
+          class="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all"
+        >
+          {{ isSubmitting ? "Submitting..." : "Sign Up" }}
+        </button>
+
+        <!-- Success Message -->
+        <p v-if="submissionSuccess" class="text-white text-center mt-4">Form submitted successfully! Redirecting...</p>
       </form>
     </div>
   </div>
 </template>
 
 <script>
+import axios from 'axios';
+
 export default {
+  name: "SignupForm",
   data() {
     return {
-      id: "",
-      email: "",
-      name: "",
-      club: "",
-      course: "",
-      password: "",
-      position: "",
+      formdata: {
+        id: "",
+        email: "",
+        name: "",
+        club: "",
+        course: "",
+        password: "",
+        position: "",
+      },
       isPasswordVisible: false,
       isSubmitting: false,
       submissionSuccess: false,
     };
   },
-  name: "SignupForm",
   computed: {
     eyeIcon() {
-      return this.isPasswordVisible 
-        ? require('@/assets/eye-open.png') 
+      return this.isPasswordVisible
+        ? require('@/assets/eye-open.png')
         : require('@/assets/eye-close.png');
     },
   },
   methods: {
-    submitForm() {
-      this.submit();
-    },
     togglePasswordVisibility() {
       this.isPasswordVisible = !this.isPasswordVisible;
-      const passwordField = document.getElementById('password');
-      passwordField.type = this.isPasswordVisible ? 'text' : 'password';
     },
-    async submit() {
+    async submitForm() {
       this.isSubmitting = true;
       try {
-        console.log("Form submitted", this.$data);
+        await axios.post('http://127.0.0.1:5000/api/register', new URLSearchParams(this.formdata), {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+        this.submissionSuccess = true;
+        setTimeout(() => {
+          this.$router.push("/");
+        }, 2000);
       } catch (error) {
         console.error("Submission failed", error);
       } finally {
         this.isSubmitting = false;
-        this.submissionSuccess = true;
-        document.getElementById("submit").textContent="Login";
-        document.getElementById("submit").addEventListener("click",()=>{
-          this.$router.push("/");
-        });
       }
     },
   },
 };
 </script>
-
-<style scoped>
-img {
-  transition: transform 0.2s ease-in-out;
-}
-img:hover {
-  transform: scale(1.2);
-}
-</style>
