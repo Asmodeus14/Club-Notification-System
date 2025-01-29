@@ -48,14 +48,10 @@ npm install
 If Tailwind CSS is not installed, you can install it manually:
 
 ```bash
-npm install tailwindcss postcss autoprefixer
+vue add tailwind
 ```
 
-Then, create the Tailwind configuration files:
-
-```bash
-npx tailwindcss init
-```
+select -minimal
 
 ### 5. Configure Tailwind CSS
 
