@@ -3,6 +3,7 @@ from flask_cors import CORS
 import logging
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
+import Functions
 
 # Initialize Flask app
 app = Flask(__name__)
