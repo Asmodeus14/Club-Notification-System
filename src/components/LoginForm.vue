@@ -7,40 +7,23 @@
       <form @submit.prevent="createpost">
         <!-- ID Input -->
         <div class="relative mb-6">
-          <input 
-            type="text" 
-            id="ID"
-            v-model="formdata.ID"
-            required
+          <input type="text" id="ID" v-model="formdata.ID" required
             class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition "
-            placeholder="User ID"
-          />
-          <label 
-            for="ID"
-            class="absolute left-4 top-4 text-white text-opacity-0 transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-0 peer-focus:text-sm peer-focus:text-opacity-100"
-          >User ID</label>
+            placeholder="User ID" />
+          <label for="ID"
+            class="absolute left-4 top-4 text-white text-opacity-0 transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-0 peer-focus:text-sm peer-focus:text-opacity-100">User
+            ID</label>
         </div>
 
         <!-- Password Input with Toggle -->
         <div class="relative mb-6">
-          <input 
-            :type="isPasswordVisible ? 'text' : 'password'" 
-            id="password"
-            v-model="formdata.password"
-            required
+          <input :type="isPasswordVisible ? 'text' : 'password'" id="password" v-model="formdata.password" required
             class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
-            placeholder="Password"
-          />
-          <label 
-            for="password"
-            class="absolute left-4 top-4 text-white text-opacity-0 transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-0 peer-focus:text-sm peer-focus:text-opacity-100"
-          >Password</label>
-          <img 
-            :src="eyeIcon" 
-            alt="eye-icon" 
-            @click="togglePasswordVisibility" 
-            class="absolute right-4 top-4 w-6 h-6 cursor-pointer opacity-80 hover:opacity-100 transition"
-          />
+            placeholder="Password" />
+          <label for="password"
+            class="absolute left-4 top-4 text-white text-opacity-0 transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-0 peer-focus:text-sm peer-focus:text-opacity-100">Password</label>
+          <img :src="eyeIcon" alt="eye-icon" @click="togglePasswordVisibility"
+            class="absolute right-4 top-4 w-6 h-6 cursor-pointer opacity-80 hover:opacity-100 transition" />
         </div>
 
         <!-- Forgot Password -->
@@ -51,10 +34,8 @@
         </div>
 
         <!-- Login Button -->
-        <button 
-          type="submit"
-          class="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all"
-        >
+        <button type="submit"
+          class="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all">
           Login
         </button>
 
@@ -67,7 +48,8 @@
 
         <!-- Social Login Buttons -->
         <div class="flex gap-4">
-          <button class="flex-1 flex items-center justify-center py-3 bg-white bg-opacity-20 rounded-xl hover:bg-opacity-30 transition">
+          <button
+            class="flex-1 flex items-center justify-center py-3 bg-white bg-opacity-20 rounded-xl hover:bg-opacity-30 transition">
             <img src="@/assets/google.svg" alt="Google" class="w-6 h-6 mr-2" />
             <span class="text-white">Google</span>
           </button>
@@ -75,7 +57,7 @@
 
         <!-- Signup Link -->
         <p class="text-center text-white text-sm mt-6">
-          Don't have an account? 
+          Don't have an account?
           <router-link to="/signup" class="underline">Sign up</router-link>
         </p>
       </form>
@@ -96,6 +78,7 @@ export default {
       },
       isPasswordVisible: false,
       Data: [],
+      status: null,
     };
   },
   computed: {
@@ -113,14 +96,28 @@ export default {
       axios.post('http://127.0.0.1:5000/api/login', new URLSearchParams(this.formdata), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       })
-      .then(response => this.Data = response.data)
-      .catch(error => console.log(error));
-      console.log(this.Data);
-      if(this.Data.position=='Admin' )
-      {
-        this.$router.push('/admin');
-      }
-    },
+        .then(response => {
+          this.Data = response.data;
+          this.status = response.status;
+
+          console.log("Login response:", this.Data); // Debugging
+
+          if (this.status === 200 && this.Data.user_id) {  // Ensure user_id exists
+            console.log(this.Data.user_id)
+            this.$router.push(`/dashboard/${this.Data.user_id}`); // Capital 'D' & correct param
+
+          } else {
+            alert("Login failed: Invalid response from server.");
+          }
+        })
+        .catch(error => {
+          console.error("Login failed:", error);
+          alert("Invalid credentials, please try again.");
+        });
+    }
+
+
   },
+
 };
 </script>

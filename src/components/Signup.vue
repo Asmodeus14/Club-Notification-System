@@ -107,7 +107,7 @@
           <select v-model="formdata.position" required
             class="w-full p-4 bg-stone-800 border border-white rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition cursor-pointer">
             <option value="" disabled selected>--Select Your Postion--</option>
-            <option value="Vetran-Coordinator">Veteran Coordinator</option>
+            <option value="Veteran-Coordinator">Veteran Coordinator</option>
             <option value="Assistant-Coordinator">Assistant Coordinator</option>
             <option value="Student-Coordinator">Student Coordinator</option>
           </select>

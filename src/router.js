@@ -5,7 +5,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import LoginForm from "@/components/LoginForm.vue";
 import SignupForm from './components/Signup.vue';
 import Forgotpassword from './components/Forgotpassword.vue';
-import AdministratorManager from './components/Admin.vue';
+import AdministratorManager from './components/Dashboard.vue';
 
 const routes = [
     {
@@ -24,10 +24,12 @@ const routes = [
         component:Forgotpassword,
     },
     {
-        path:'/admin',
-        name:'admin',
+        path:'/dashboard/:user_id',  // Route expects u_id
+        props:true,
+        name:'Dashboard',
         component:AdministratorManager,
     },
+    
 ];
 
 const router = createRouter({
