@@ -144,7 +144,7 @@ def register():
         course = request.form.get('course')
         club = request.form.get('club')
         name = request.form.get('name')
-        position=position.lower()
+        position = position.lower()
 
         if not user_id or not email or not password or not position:
             return jsonify({"error": "Missing required fields"}), 400
@@ -212,8 +212,8 @@ def get_user(user_id):
         return jsonify({"error": "Something went wrong"}), 500
 
 
-@app.route('/api/approvals/<string:position>', methods=['GET'])
-def get_approvals(position):
+@app.route('/api/approvals/<string:position>-<string:club_name>', methods=['GET'])
+def get_approvals(position,club_name):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -227,19 +227,26 @@ def get_approvals(position):
             'veteran-coordinator': 'assistant-coordinator',
             'assistant-coordinator': 'student-coordinator'
         }
-        
+
         # Validate position
         if position not in approval_hierarchy:
             return jsonify({"error": "Invalid position"}), 400
 
         # Fetch approvals based on hierarchy
-        cur.execute(
-            "SELECT * FROM approval WHERE position = %s",
-            (approval_hierarchy[position],)
-        )
+        if position == 'admin':
+            print(0)
+            cur.execute(
+                "SELECT * FROM approval WHERE position = %s",
+                (approval_hierarchy[position],)
+            )
+        else:
+            cur.execute(
+                "SELECT * FROM approval WHERE position = %s AND club = %s",
+                (approval_hierarchy[position], club_name)
+            )
 
         pending = cur.fetchall()
-        
+
         # Fetch processed requests
         cur.execute("SELECT * FROM users")
         processed = cur.fetchall()
@@ -266,7 +273,6 @@ def approve_request(user_id):
     # Fetch the approval request
     cur.execute("SELECT * FROM approval WHERE user_id = %s", (user_id,))
     approval = cur.fetchone()
-    
 
     if approval is None:
         cur.close()
@@ -278,13 +284,13 @@ def approve_request(user_id):
         cur.execute('''
             INSERT INTO users (user_id, email, password, position, course, club, name)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ''', (   approval["user_id"],
-                approval["email"],
-                approval["password"],
-                approval["position"],
-                approval["course"],
-                approval["club"],
-                approval["name"]))
+        ''', (approval["user_id"],
+              approval["email"],
+              approval["password"],
+              approval["position"],
+              approval["course"],
+              approval["club"],
+              approval["name"]))
         # Delete from approval table after successful insertion
         cur.execute("DELETE FROM approval WHERE user_id = %s", (user_id,))
 
@@ -325,13 +331,13 @@ def reject_request(id):
         cur.execute('''
             INSERT INTO rejected (user_id, email, password, position, course, club, name)
             VALUES (%s,%s,%s,%s,%s,%s,%s)
-        ''', (  approval["user_id"],
-                approval["email"],
-                approval["password"],
-                approval["position"],
-                approval["course"],
-                approval["club"],
-                approval["name"]))
+        ''', (approval["user_id"],
+              approval["email"],
+              approval["password"],
+              approval["position"],
+              approval["course"],
+              approval["club"],
+              approval["name"]))
 
         # Delete from approval table after moving it to rejected
         cur.execute("DELETE FROM approval WHERE user_id = %s", (id,))
@@ -385,12 +391,13 @@ def delete_user(user_id):
     """
     try:
         logging.info(f"Received request to delete user with ID: {user_id}")
-        
+
         conn = get_db_connection()
         cur = conn.cursor()
 
         # Log the search for the user
-        logging.info(f"Checking if user with ID {user_id} exists in the 'users' table.")
+        logging.info(f"Checking if user with ID {
+                     user_id} exists in the 'users' table.")
 
         # Check if user exists in 'users' (approved users)
         cur.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
@@ -398,21 +405,24 @@ def delete_user(user_id):
 
         if user:
             # Log that user was found
-            logging.info(f"User with ID {user_id} found. Proceeding with deletion.")
+            logging.info(f"User with ID {
+                         user_id} found. Proceeding with deletion.")
 
             # Delete the user
             cur.execute("DELETE FROM users WHERE user_id = %s", (user_id,))
             conn.commit()
 
             # Log successful deletion
-            logging.info(f"User with ID {user_id} has been successfully deleted.")
+            logging.info(f"User with ID {
+                         user_id} has been successfully deleted.")
             cur.close()
             conn.close()
 
             return jsonify({"message": "User deleted successfully"}), 200
         else:
             # Log that the user was not found
-            logging.warning(f"User with ID {user_id} not found or not approved.")
+            logging.warning(
+                f"User with ID {user_id} not found or not approved.")
             cur.close()
             conn.close()
 
@@ -421,6 +431,33 @@ def delete_user(user_id):
         # Log the error in case of exception
         logging.error(f"Error deleting user with ID {user_id}: {str(e)}")
         return jsonify({"error": "Something went wrong"}), 500
+
+
+@app.route('/api/send_message', methods=['POST'])
+def send_message():
+    try:
+        # Get the data from the request
+        data = request.get_json()
+        roles = data.get('role')
+        message = data.get('message')
+
+        # Check if the roles and message are valid
+        if not roles or not message:
+            return jsonify({"error": "Roles and message are required"}), 400
+
+        # Process the data (e.g., send the message to selected roles)
+        # For example, you could loop through each role and log or send the message
+        print("Roles selected:", roles)
+        print("Message:", message)
+
+        # Return a success response
+        return jsonify({"message": "Message sent successfully!"}), 200
+
+    except Exception as e:
+        logging.error(f"Error sending message: {str(e)}")
+        return jsonify({"error": "Failed to send message"}), 500
+
+
 # ----------------- Initialize Database -----------------
 init_db()
 
