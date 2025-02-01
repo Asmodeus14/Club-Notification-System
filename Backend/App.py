@@ -45,7 +45,9 @@ def init_db():
             position TEXT NOT NULL,
             course TEXT NOT NULL,
             club TEXT NOT NULL,
-            name TEXT NOT NULL
+            name TEXT NOT NULL,
+            status TEXT DEFAULT 'Approved'
+            
         )
     ''')
 
@@ -78,7 +80,8 @@ def init_db():
             position TEXT NOT NULL,
             course TEXT NOT NULL,
             club TEXT NOT NULL,
-            name TEXT NOT NULL
+            name TEXT NOT NULL,
+            status TEXT DEFAULT 'Rejected'
             )'''
                 )
 
@@ -224,7 +227,7 @@ def get_approvals(position):
             'veteran-coordinator': 'assistant-coordinator',
             'assistant-coordinator': 'student-coordinator'
         }
-        print(approval_hierarchy[position])
+        
         # Validate position
         if position not in approval_hierarchy:
             return jsonify({"error": "Invalid position"}), 400
@@ -236,7 +239,7 @@ def get_approvals(position):
         )
 
         pending = cur.fetchall()
-        print(pending)
+        
         # Fetch processed requests
         cur.execute("SELECT * FROM users")
         processed = cur.fetchall()
@@ -300,7 +303,7 @@ def approve_request(user_id):
         conn.close()
 
 
-@app.route('/api/reject/<int:id>', methods=['POST'])
+@app.route('/api/reject/<string:id>', methods=['POST'])
 def reject_request(id):
     """
     Reject a pending approval request and move it to the rejected table.
@@ -309,7 +312,7 @@ def reject_request(id):
     cur = conn.cursor()
 
     # Fetch the approval request
-    cur.execute("SELECT * FROM approval WHERE user_id = %s", (str(id),))
+    cur.execute("SELECT * FROM approval WHERE user_id = %s", (id,))
     approval = cur.fetchone()
 
     if approval is None:
@@ -321,8 +324,8 @@ def reject_request(id):
         # Move the rejected request to the rejected table
         cur.execute('''
             INSERT INTO rejected (user_id, email, password, position, course, club, name)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (   approval["user_id"],
+            VALUES (%s,%s,%s,%s,%s,%s,%s)
+        ''', (  approval["user_id"],
                 approval["email"],
                 approval["password"],
                 approval["position"],
@@ -331,7 +334,7 @@ def reject_request(id):
                 approval["name"]))
 
         # Delete from approval table after moving it to rejected
-        cur.execute("DELETE FROM approval WHERE user_id = %s", (str(id),))
+        cur.execute("DELETE FROM approval WHERE user_id = %s", (id,))
 
         conn.commit()
 
@@ -375,36 +378,49 @@ def get_all_users():
         return jsonify({"error": "Something went wrong"}), 500
 
 
-@app.route('/api/delete_user/<int:user_id>', methods=['DELETE'])
+@app.route('/api/delete/<string:user_id>', methods=['DELETE'])
 def delete_user(user_id):
     """
     Deletes a user from the 'users' table only if they are approved.
     """
     try:
+        logging.info(f"Received request to delete user with ID: {user_id}")
+        
         conn = get_db_connection()
         cur = conn.cursor()
+
+        # Log the search for the user
+        logging.info(f"Checking if user with ID {user_id} exists in the 'users' table.")
 
         # Check if user exists in 'users' (approved users)
         cur.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
         user = cur.fetchone()
 
         if user:
+            # Log that user was found
+            logging.info(f"User with ID {user_id} found. Proceeding with deletion.")
+
             # Delete the user
             cur.execute("DELETE FROM users WHERE user_id = %s", (user_id,))
             conn.commit()
+
+            # Log successful deletion
+            logging.info(f"User with ID {user_id} has been successfully deleted.")
             cur.close()
             conn.close()
 
             return jsonify({"message": "User deleted successfully"}), 200
         else:
+            # Log that the user was not found
+            logging.warning(f"User with ID {user_id} not found or not approved.")
             cur.close()
             conn.close()
+
             return jsonify({"error": "User not found or not approved"}), 404
     except Exception as e:
-        logging.error(f"Error deleting user: {str(e)}")
+        # Log the error in case of exception
+        logging.error(f"Error deleting user with ID {user_id}: {str(e)}")
         return jsonify({"error": "Something went wrong"}), 500
-
-
 # ----------------- Initialize Database -----------------
 init_db()
 

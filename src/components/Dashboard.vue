@@ -65,7 +65,7 @@
               <td class="p-2">{{ request.email }}</td>
               <td class="p-2">{{ request.status }}</td>
               <td class="p-2">
-                <button v-if="request.status === 'Approved'" @click="deleteApproved(request.id)"
+                <button v-if="request.status === 'Approved'" @click="deleteApproved(request)"
                   class="bg-yellow-500 text-white px-4 py-1 rounded hover:bg-yellow-600">Delete</button>
               </td>
             </tr>
@@ -165,10 +165,10 @@ export default {
       }
     },
 
-    async deleteApproved(id) {
+    async deleteApproved(request) {
       if (this.userdata.position === 'Admin') {
         try {
-          await axios.post(`http://127.0.0.1:5000/api/delete/${id}`);
+          await axios.delete(`http://127.0.0.1:5000/api/delete/${request.user_id}`);
           this.fetchRequests();
         } catch (error) {
           console.error("Error deleting approved request:", error);
