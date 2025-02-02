@@ -7,7 +7,7 @@
       <form @submit.prevent="submitForm">
         <!-- ID -->
         <div class="relative mb-6">
-          <input type="text" id="id" v-model="formdata.id" required
+          <input type="text" id="id" v-model="formdata.user_id" required
             class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
             placeholder="User ID" />
           <label for="id"
@@ -134,7 +134,7 @@ export default {
   data() {
     return {
       formdata: {
-        id: "",
+        user_id: "",
         email: "",
         name: "",
         club: "",

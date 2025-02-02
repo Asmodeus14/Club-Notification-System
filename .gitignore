@@ -3,12 +3,15 @@ node_modules
 /dist
 venv
 __pycache__
-Data
+App2.py
+API.env
+
 
 
 # local env files
 .env.local
 .env.*.local
+
 
 # Log files
 npm-debug.log*

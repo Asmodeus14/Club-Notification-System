@@ -4,24 +4,27 @@
       <h1 class="text-3xl font-bold text-white text-center mb-2">Welcome Back</h1>
       <p class="text-white text-center mb-6">Login to continue</p>
 
-      <form @submit.prevent="createpost">
+      <form @submit.prevent="handleLogin">
         <!-- ID Input -->
         <div class="relative mb-6">
-          <input type="text" id="ID" v-model="formdata.ID" required
-            class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition "
+          <input type="text" id="ID" v-model="formData.user_id" required
+            class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
             placeholder="User ID" />
           <label for="ID"
-            class="absolute left-4 top-4 text-white text-opacity-0 transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-0 peer-focus:text-sm peer-focus:text-opacity-100">User
-            ID</label>
+            class="absolute left-4 top-4 text-white text-opacity-0 transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-0 peer-focus:text-sm peer-focus:text-opacity-100">
+            User ID
+          </label>
         </div>
 
         <!-- Password Input with Toggle -->
         <div class="relative mb-6">
-          <input :type="isPasswordVisible ? 'text' : 'password'" id="password" v-model="formdata.password" required
+          <input :type="isPasswordVisible ? 'text' : 'password'" id="password" v-model="formData.password" required
             class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
             placeholder="Password" />
           <label for="password"
-            class="absolute left-4 top-4 text-white text-opacity-0 transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-0 peer-focus:text-sm peer-focus:text-opacity-100">Password</label>
+            class="absolute left-4 top-4 text-white text-opacity-0 transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-lg peer-placeholder-shown:text-opacity-50 peer-focus:top-0 peer-focus:text-sm peer-focus:text-opacity-100">
+            Password
+          </label>
           <img :src="eyeIcon" alt="eye-icon" @click="togglePasswordVisibility"
             class="absolute right-4 top-4 w-6 h-6 cursor-pointer opacity-80 hover:opacity-100 transition" />
         </div>
@@ -72,13 +75,12 @@ export default {
   name: "LoginForm",
   data() {
     return {
-      formdata: {
-        ID: '',
+      formData: {
+        user_id: '', // Changed from ID to user_id for consistency with backend
         password: '',
       },
       isPasswordVisible: false,
-      Data: [],
-      status: null,
+      loginError: null, // Added for error handling
     };
   },
   computed: {
@@ -92,32 +94,33 @@ export default {
     togglePasswordVisibility() {
       this.isPasswordVisible = !this.isPasswordVisible;
     },
-    createpost() {
-      axios.post('http://127.0.0.1:5000/api/login', new URLSearchParams(this.formdata), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      })
-        .then(response => {
-          this.Data = response.data;
-          this.status = response.status;
+    async handleLogin() {
+      this.loginError = null; // Reset error message
 
-          console.log("Login response:", this.Data); // Debugging
-
-          if (this.status === 200 && this.Data.user_id) {  // Ensure user_id exists
-            console.log(this.Data.user_id)
-            this.$router.push(`/dashboard/${this.Data.user_id}`); // Capital 'D' & correct param
-
-          } else {
-            alert("Login failed: Invalid response from server.");
+      try {
+        const response = await axios.post(
+          'http://127.0.0.1:5000/api/login',
+          new URLSearchParams(this.formData),
+          {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           }
-        })
-        .catch(error => {
-          console.error("Login failed:", error);
-          alert("Invalid credentials, please try again.");
-        });
-    }
+        );
 
-
+        if (response.status === 200 && response.data.user_id) {
+          // Redirect to dashboard with user_id
+          this.$router.push(`/dashboard/${response.data.user_id}`);
+        } else {
+          this.loginError = "Invalid credentials, please try again.";
+        }
+      } catch (error) {
+        console.error("Login failed:", error);
+        this.loginError = error.response?.data?.error || "An unexpected error occurred. Please try again.";
+      }
+    },
   },
-
 };
 </script>
+
+<style scoped>
+/* Add custom styles here if needed */
+</style>

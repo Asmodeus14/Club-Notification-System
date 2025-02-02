@@ -1,35 +1,57 @@
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import logging
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
+from dotenv import load_dotenv
+import os
+from marshmallow import Schema, fields, ValidationError
+import secrets
+reset_token = secrets.token_urlsafe(32)
+
+# Load environment variables
+load_dotenv('API.env')
 
 # Initialize Flask app
 app = Flask(__name__)
 
-# Enable CORS securely (Allow only specific origins)
-CORS(app, resources={
-     r"/api/*": {"origins": ["http://localhost:8080", "http://192.168.101.86:8080"]}})
+# Configuration
+class Config:
+    DB_CONFIG = {
+        "dbname": os.getenv("DB_NAME"),
+        "user": os.getenv("DB_USER"),
+        "password": os.getenv("DB_PASSWORD"),
+        "host": os.getenv("DB_HOST"),
+        "port": os.getenv("DB_PORT")
+    }
+    CORS_ORIGINS = ["http://localhost:8080", "http://192.168.101.86:8080"]
+    SECRET_KEY = os.getenv("SECRET_KEY")
+    BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+
+app.config.from_object(Config)
+
+# Enable CORS securely
+CORS(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}})
 
 # Configure Logging
-logging.basicConfig(level=logging.INFO,
-                    format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Database connection settings
-DB_CONFIG = {
-    "dbname": "postgres",
-    "user": "postgres",
-    "password": "Abhaysingh14",
-    "host": "localhost",
-    "port": "5432"
-}
+# Initialize Brevo API
+configuration = sib_api_v3_sdk.Configuration()
+configuration.api_key['api-key'] = app.config["BREVO_API_KEY"]
+api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
 
-# ----------------- Database Utility Functions -----------------
-
-
+# Database Utility Functions
 def get_db_connection():
-    return psycopg2.connect(**DB_CONFIG, cursor_factory=RealDictCursor)
+    try:
+        return psycopg2.connect(**app.config["DB_CONFIG"], cursor_factory=RealDictCursor)
+    except psycopg2.Error as e:
+        logging.error(f"Database connection error: {str(e)}")
+        return None
 
 
 def init_db():
@@ -46,8 +68,8 @@ def init_db():
             course TEXT NOT NULL,
             club TEXT NOT NULL,
             name TEXT NOT NULL,
-            status TEXT DEFAULT 'Approved'
-            
+            status TEXT DEFAULT 'Approved',
+            reset_token TEXT
         )
     ''')
 
@@ -61,7 +83,9 @@ def init_db():
             name TEXT NOT NULL
         )
     ''')
-    cur.execute('''CREATE TABLE IF NOT EXISTS approval (
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS approval (
             id SERIAL PRIMARY KEY,
             user_id TEXT NOT NULL UNIQUE,
             email TEXT NOT NULL,
@@ -70,9 +94,11 @@ def init_db():
             course TEXT NOT NULL,
             club TEXT NOT NULL,
             name TEXT NOT NULL
-            )'''
-                )
-    cur.execute('''CREATE TABLE IF NOT EXISTS rejected (
+        )
+    ''')
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS rejected (
             id SERIAL PRIMARY KEY,
             user_id TEXT NOT NULL UNIQUE,
             email TEXT NOT NULL,
@@ -82,104 +108,145 @@ def init_db():
             club TEXT NOT NULL,
             name TEXT NOT NULL,
             status TEXT DEFAULT 'Rejected'
-            )'''
-                )
+        )
+    ''')
 
     # Insert admin if not exists
     cur.execute("SELECT * FROM admin WHERE user_id = 'Admin'")
     if not cur.fetchone():
-        cur.execute("INSERT INTO admin (user_id, email, password, position, name) VALUES (%s, %s, %s, %s,%s)",
+        cur.execute("INSERT INTO admin (user_id, email, password, position, name) VALUES (%s, %s, %s, %s, %s)",
                     ('Admin', 'Singhabhay3145@gmail.com', generate_password_hash('admin12345', salt_length=5), 'Admin', 'Admin'))
 
     conn.commit()
     cur.close()
     conn.close()
 
-
+# Initialize Database
 init_db()
-# ----------------- API Routes -----------------
 
+# Helper Functions
+def error_response(message, status_code):
+    return jsonify({"error": message}), status_code
 
+def send_email(to_email, subject, content):
+    sender = {"name": "SRMU Club Notices", "email": "srmu.clubnotices@gmail.com"}
+    to = [{"email": to_email, "name": to_email}]
+    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+        sender=sender, to=to, subject=subject, html_content=content
+    )
+
+    try:
+        api_instance.send_transac_email(send_smtp_email)
+        logging.info(f"Email sent to {to_email}")
+    except ApiException as e:
+        logging.error(f"Brevo API error: {str(e)}")
+    except Exception as e:
+        logging.error(f"Unexpected error sending email: {str(e)}")
+
+# Schemas for Input Validation
+class LoginSchema(Schema):
+    user_id = fields.Str(required=True)
+    password = fields.Str(required=True)
+
+class RegisterSchema(Schema):
+    user_id = fields.Str(required=True)
+    email = fields.Email(required=True)
+    password = fields.Str(required=True)
+    position = fields.Str(required=True)
+    course = fields.Str(required=True)
+    club = fields.Str(required=True)
+    name = fields.Str(required=True)
+
+# API Routes
 @app.route('/api/login', methods=['POST'])
 def login():
     try:
-        user_id = request.form.get('ID')
-        password = request.form.get('password')
+        data = LoginSchema().load(request.form)
+    except ValidationError as err:
+        return error_response(err.messages, 400)
 
-        if not user_id or not password:
-            return jsonify({"error": "Missing required fields"}), 400
+    user_id = data['user_id']
+    password = data['password']
 
-        conn = get_db_connection()
-        cur = conn.cursor()
+    conn = get_db_connection()
+    cur = conn.cursor()
 
-        # Check user table
-        cur.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
-        user = cur.fetchone()
+    # Check user table
+    cur.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
+    user = cur.fetchone()
 
-        # Check admin table
-        cur.execute("SELECT * FROM admin WHERE user_id = %s", (user_id,))
-        admin = cur.fetchone()
+    # Check admin table
+    cur.execute("SELECT * FROM admin WHERE user_id = %s", (user_id,))
+    admin = cur.fetchone()
 
-        cur.close()
-        conn.close()
+    cur.close()
+    conn.close()
 
-        if user and check_password_hash(user['password'], password):
-            return jsonify({"message": "Login successful", "user_id": user_id, "name": user['name'], "position": user['position'], "course": user['course'], "club": user['club']}), 200
-        elif admin and check_password_hash(admin['password'], password):
-            return jsonify({"message": "Login successful", "user_id": user_id, "position": admin['position']}), 200
-        else:
-            return jsonify({"error": "Invalid credentials"}), 401
-    except Exception as e:
-        logging.error(f"Login error: {str(e)}")
-        return jsonify({"error": "Something went wrong"}), 500
-
+    if user and check_password_hash(user['password'], password):
+        return jsonify({"message": "Login successful", "user_id": user_id, "name": user['name'], "position": user['position'], "course": user['course'], "club": user['club']}), 200
+    elif admin and check_password_hash(admin['password'], password):
+        return jsonify({"message": "Login successful", "user_id": user_id, "position": admin['position']}), 200
+    else:
+        return error_response("Invalid credentials", 401)
 
 @app.route('/api/register', methods=['POST'])
 def register():
     try:
-        user_id = request.form.get('id')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        position = request.form.get('position')
-        course = request.form.get('course')
-        club = request.form.get('club')
-        name = request.form.get('name')
-        position = position.lower()
+        data = RegisterSchema().load(request.form)
+    except ValidationError as err:
+        return error_response(err.messages, 400)
+    print(data)
+    conn = get_db_connection()
+    cur = conn.cursor()
 
-        if not user_id or not email or not password or not position:
-            return jsonify({"error": "Missing required fields"}), 400
+    cur.execute("SELECT * FROM users WHERE user_id = %s", (data['user_id'],))
+    if cur.fetchone():
+        return error_response("User already exists", 400)
 
-        conn = get_db_connection()
-        cur = conn.cursor()
+    hashed_password = generate_password_hash(data['password'], salt_length=5)
+    cur.execute("INSERT INTO approval (user_id, email, password, position, course, club, name) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (data['user_id'], data['email'], hashed_password, data['position'].lower(), data['course'], data['club'], data['name']))
+    conn.commit()
+    cur.close()
+    conn.close()
 
-        cur.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
-        if cur.fetchone():
-            return jsonify({"error": "User already exists"}), 400
-
-        hashed_password = generate_password_hash(password, salt_length=5)
-        cur.execute("INSERT INTO approval (user_id, email, password, position, course, club, name) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                    (user_id, email, hashed_password, position, course, club, name))
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        return jsonify({'message': 'Registration sent for approval', 'user_id': user_id})
-    except Exception as e:
-        logging.error(f"Registration error: {str(e)}")
-        return jsonify({"error": "Something went wrong"}), 500
-
+    return jsonify({'message': 'Registration sent for approval', 'user_id': data['user_id']}), 200
 
 @app.route('/api/forgot', methods=['POST'])
 def forgot_password():
-    try:
-        user_id = request.form.get('id')
-        if not user_id:
-            return jsonify({"error": "User ID is required"}), 400
-        return jsonify({'message': 'Password reset request received', "user_id": user_id})
-    except Exception as e:
-        logging.error(f"Forgot Password error: {str(e)}")
-        return jsonify({"error": "Something went wrong"}), 500
+    email= request.form.get('email')
+    user_id= request.form.get('user_id')
+    
+    print(email, user_id)
 
+    if not email:
+        return error_response("Email is required", 400)
+
+    conn = get_db_connection()
+    if not conn:
+        return error_response("Database connection failed", 500)
+
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
+    user = cur.fetchone()
+    print(user['email'],user['user_id'])
+
+    if not user:
+        return error_response("User not found", 404)
+    if user['email'] != email:
+        return error_response("Email does not match", 400)
+    # Generate a secure reset token
+    reset_token = secrets.token_urlsafe(32)
+    
+    cur.execute("UPDATE users SET reset_token = %s WHERE email = %s", (reset_token, user['email']))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    reset_link = f"http://localhost:8080/reset-password?token={reset_token}"
+    send_email(email, "Password Reset", f"Click the link to reset your password: <a href='{reset_link}'>Reset Password</a>")
+
+    return jsonify({"message": "Password reset email sent"}), 200
 
 @app.route('/api/get_user/<string:user_id>', methods=['GET'])
 def get_user(user_id):
@@ -433,34 +500,6 @@ def delete_user(user_id):
         return jsonify({"error": "Something went wrong"}), 500
 
 
-@app.route('/api/send_message', methods=['POST'])
-def send_message():
-    try:
-        # Get the data from the request
-        data = request.get_json()
-        roles = data.get('role')
-        message = data.get('message')
-
-        # Check if the roles and message are valid
-        if not roles or not message:
-            return jsonify({"error": "Roles and message are required"}), 400
-
-        # Process the data (e.g., send the message to selected roles)
-        # For example, you could loop through each role and log or send the message
-        print("Roles selected:", roles)
-        print("Message:", message)
-
-        # Return a success response
-        return jsonify({"message": "Message sent successfully!"}), 200
-
-    except Exception as e:
-        logging.error(f"Error sending message: {str(e)}")
-        return jsonify({"error": "Failed to send message"}), 500
-
-
-# ----------------- Initialize Database -----------------
-init_db()
-
-# ----------------- Run the Flask App -----------------
+# Run the Flask App
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
