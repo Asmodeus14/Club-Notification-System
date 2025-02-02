@@ -110,6 +110,9 @@
   
           if (response.status === 200) {
             this.successMessage = "Password reset successfully! You can now login with your new password.";
+            setTimeout(() => {
+                this.$router.push("/");
+            }, 2000);
           } else {
             this.errorMessage = "Failed to reset password. Please try again.";
           }
