@@ -88,8 +88,8 @@
             <option value="Student Coordinator">Student Coordinator</option>
             <option value="Club Members">Club Members</option>
           </select>
-          <input v-model="messageText" type="text" placeholder="Enter message..."
-            class="p-2 border rounded-md flex-1" />
+            <textarea v-model="messageText" placeholder="Enter message..." rows="4"
+            class="p-2 border rounded-md flex-1"></textarea>
           
         </div>
         <div class="flex justify-center mt-4">
@@ -193,9 +193,9 @@ export default {
       }
 
       try {
-        // Send the selected roles and message to the backend
+        
         await axios.post('http://127.0.0.1:5000/api/send_message', {
-          role: this.selectedRole,  // This will be an array
+          role: this.selectedRole,
           message: this.messageText
         });
 

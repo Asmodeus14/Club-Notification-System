@@ -6,6 +6,7 @@ import LoginForm from "@/components/LoginForm.vue";
 import SignupForm from './components/Signup.vue';
 import Forgotpassword from './components/Forgotpassword.vue';
 import AdministratorManager from './components/Dashboard.vue';
+import ResetPassword from './components/ResetPassword.vue';
 
 const routes = [
     {
@@ -28,6 +29,13 @@ const routes = [
         props:true,
         name:'Dashboard',
         component:AdministratorManager,
+    },
+    {
+        path:'/reset-password',
+        props:true,
+        name:'ResetPassword',
+        component:ResetPassword,
+        
     },
     
 ];
