@@ -38,7 +38,7 @@ class Config:
 
 
 app.config.from_object(Config)
-Email_limit_API=app.config["BREVO_API_KEY"]
+Email_limit_API = app.config["BREVO_API_KEY"]
 # Enable CORS securely
 CORS(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}})
 
@@ -119,6 +119,16 @@ def init_db():
             status TEXT DEFAULT 'Rejected'
         )
     ''')
+    cur.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS emails(
+            id SERIAL PRIMARY KEY,
+            email VARCHAR(255),
+            content TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        '''
+    )
 
     # Insert admin if not exists
     cur.execute("SELECT * FROM admin WHERE user_id = 'Admin'")
@@ -140,7 +150,6 @@ init_db()
 def error_response(message, status_code):
     return jsonify({"error": message}), status_code
 
-
 def send_email(to_email, subject, content):
     sender = {"name": "SRMU Club Notices",
               "email": "srmu.clubnotices@gmail.com"}
@@ -157,7 +166,39 @@ def send_email(to_email, subject, content):
     except Exception as e:
         logging.error(f"Unexpected error sending email: {str(e)}")
 
+def loged_email():
+    conn=None
+    cur=None
+    if check_brevo_email_quota(Email_limit_API)==0:
+        exit
+    try:
+        conn=get_db_connection()
+        cur=conn.cursor()
+        cur.execute("SELECT email FROM emails")
+        users = cur.fetchall()
+        cur.execute("SELECT content FROM emails")
+        contents=cur.fetchall()
+        
+        emails = [user['email'] for user in users]
+        contents=[content['content'] for content in contents]
+        
+        print(emails,contents)
+        
+        if len(emails) > 200:
+            logging.warning(f"Number of emails to send ({len(emails)}) in Logs")
+        
+            
+    except Exception as e:
+        logging.error(f"Error sending emails: {str(e)}")
+    finally:
+        # Close the database connection and cursor
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
+
+   
 def send_emails_to_all_users():
     """Send emails to all users in the `users` table."""
     conn = None
@@ -173,7 +214,7 @@ def send_emails_to_all_users():
 
         # Check if the number of emails exceeds 70
         if len(emails) > 200:
-            logging.warning(f"Number of emails to send ({len(emails)}) exceeds 70. Proceeding anyway.")
+            logging.warning(f"Number of emails to send ({len(emails)}) exceeds 200. Proceeding anyway.")
 
         # Send emails to all users
         subject = "Important Announcement"
@@ -182,11 +223,28 @@ def send_emails_to_all_users():
             <p>This is an important announcement from Your App.</p>
             <p>Thank you for using our service!</p>
         """
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # SQL query to insert email, content, and current datetime
+        insert_query = """
+        INSERT INTO emails (email, content, created_at)
+        VALUES (%s, %s, %s);
+        """
+
+        # Get the current date and time
+        current_datetime = datetime.now()
 
         success_count = 0
+        logged_email=0
         for email in emails:
-            if send_email(email, subject, content):
-                success_count += 1
+            if check_brevo_email_quota(Email_limit_API)>100:
+                send_email(to_email=email,subject=subject,content=content)
+                success_count+=1
+            else:
+                cur.execute(insert_query, (email, content, current_datetime))
+                logged_email+=1
 
         logging.info(f"Successfully sent {success_count} out of {len(emails)} emails.")
 
@@ -200,32 +258,31 @@ def send_emails_to_all_users():
         if conn:
             conn.close()
 
+
 def send_approval_email(email, name, club, position):
     """
     Send an email to the user notifying them of their approval.
     """
-    subject = "Your Application Has Been Approved"
-    content = f"""
-        <p>Dear {name},</p>
-        <p>We are pleased to inform you that your application has been approved!</p>
-        <p>Here are your details:</p>
-        <ul>
-            <li><strong>Club:</strong> {club}</li>
-            <li><strong>Position:</strong> {position}</li>
-        </ul>
-        <p>Thank you for joining us. We look forward to working with you!</p>
-        <p>Best regards,<br></p>
-    """
-    send_email(email, subject, content)
-    
-
     try:
-        logging.info(f"Approval email sent to {email}")
-        
-        
+        subject = "Your Application Has Been Approved"
+        content = f"""
+            <p>Dear {name},</p>
+            <p>We are pleased to inform you that your application has been approved!</p>
+            <p>Here are your details:</p>
+            <ul>
+                <li><strong>Club:</strong> {club}</li>
+                <li><strong>Position:</strong> {position}</li>
+            </ul>
+            <p>Thank you for joining us. We look forward to working with you!</p>
+            <p>Best regards,<br></p>
+        """
+        if check_brevo_email_quota(Email_limit_API)>50:
+            send_email(email, subject, content)
+            logging.info(f"Approval email sent to {email}")
+    
     except ApiException as e:
         logging.error(f"Failed to send approval email to {email}: {str(e)}")
-        
+
 
 # Schemas for Input Validation
 class LoginSchema(Schema):
@@ -336,11 +393,11 @@ def forgot_password():
         <p><a href="{reset_link}">Reset Password</a></p>
         <p>If you did not request this, please ignore this email.</p>
     """
-    if check_brevo_email_quota(Email_limit_API)!=0:
+    if check_brevo_email_quota(Email_limit_API) != 0:
         print(check_brevo_email_quota(Email_limit_API))
         send_email(email, "Password Reset", content)
     else:
-        return jsonify({"messeage":"Email Was not sent,Due to Email Limit"})
+        return jsonify({"messeage": "Email Was not sent,Due to Email Limit"})
 
     return jsonify({"message": "Password reset email sent"}), 200
 
@@ -398,7 +455,7 @@ def get_approvals(position, club_name):
 
         # Fetch approvals based on hierarchy
         if position == 'admin':
-            
+
             cur.execute(
                 "SELECT * FROM approval WHERE position = %s",
                 (approval_hierarchy[position],)
@@ -468,7 +525,8 @@ def approve_request(user_id):
 
     except Exception as e:
         conn.rollback()  # Rollback in case of error
-        logging.error(f"Error approving request: {str(e)}")  # Log the real error
+        logging.error(f"Error approving request: {
+                      str(e)}")  # Log the real error
         return jsonify({"error": f"Failed to approve request: {str(e)}"}), 500
 
     finally:
