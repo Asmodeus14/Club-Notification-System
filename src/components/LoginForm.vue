@@ -36,10 +36,11 @@
           </router-link>
         </div>
 
-        <!-- Login Button -->
-        <button type="submit"
-          class="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all">
-          Login
+        <!-- Login Button with Loader -->
+        <button type="submit" :disabled="isLoading"
+          class="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all flex items-center justify-center">
+          <span v-if="isLoading" class="loader"></span>
+          <span v-else>Login</span>
         </button>
 
         <!-- Divider -->
@@ -76,11 +77,12 @@ export default {
   data() {
     return {
       formData: {
-        user_id: '', // Changed from ID to user_id for consistency with backend
+        user_id: '',
         password: '',
       },
       isPasswordVisible: false,
-      loginError: null, // Added for error handling
+      isLoading: false, // Added loading state
+      loginError: null,
     };
   },
   computed: {
@@ -95,8 +97,8 @@ export default {
       this.isPasswordVisible = !this.isPasswordVisible;
     },
     async handleLogin() {
-      this.loginError = null; // Reset error message
-
+      this.isLoading = true;
+      this.loginError = null;
       try {
         const response = await axios.post(
           'http://127.0.0.1:5000/api/login',
@@ -107,7 +109,6 @@ export default {
         );
 
         if (response.status === 200 && response.data.user_id) {
-          // Redirect to dashboard with user_id
           this.$router.push(`/dashboard/${response.data.user_id}`);
         } else {
           this.loginError = "Invalid credentials, please try again.";
@@ -115,6 +116,8 @@ export default {
       } catch (error) {
         console.error("Login failed:", error);
         this.loginError = error.response?.data?.error || "An unexpected error occurred. Please try again.";
+      } finally {
+        this.isLoading = false;
       }
     },
   },
@@ -122,5 +125,17 @@ export default {
 </script>
 
 <style scoped>
-/* Add custom styles here if needed */
+.loader {
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 </style>

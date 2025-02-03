@@ -1,102 +1,95 @@
 <template>
-  <div class="min-h-screen bg-gray-100">
-    <nav class="bg-blue-600 p-4 text-white shadow-md">
+  <div class="min-h-screen bg-gradient-to-br from-purple-700 via-blue-600 to-indigo-900 flex flex-col items-center">
+    <nav class="backdrop-blur-lg bg-white/10 p-4 text-white shadow-lg w-full">
       <div class="container mx-auto flex justify-between items-center">
-        <!-- Logo and Dashboard Name -->
-        <h1 class="text-xl font-bold flex items-center space-x-2">
-          <span>{{ userdata.name }}</span>
+        <h1 class="text-2xl font-bold flex items-center space-x-2">
+          <span>{{ position(userdata.position) }}</span>
           <span class="text-sm text-gray-300">|</span>
           <span class="text-lg">{{ userdata.club }}</span>
-          
         </h1>
       </div>
     </nav>
-    <div class="flex justify-center text-lg">
-      <h1>
-        -----welcome to dashboard
-        {{ userdata.position }}-----
+
+    <div class="flex flex-col items-center text-lg mt-6">
+      <h1 class="text-4xl font-bold text-center text-gray-200">
+        Welcome <span class="text-blue-400">{{ userdata.name }}</span>
       </h1>
-      
     </div>
-    <div class="p-6">
-      <!-- Pending Approvals -->
-      <div class="bg-white shadow-lg rounded-lg p-6 overflow-x-auto">
-        <h2 class="text-2xl font-semibold mb-4">Pending Approvals</h2>
-        <table class="w-full border-collapse">
+
+    <div class="p-6 w-full max-w-5xl">
+      <div class="backdrop-blur-lg bg-white/10 shadow-lg rounded-2xl p-6 overflow-hidden hover:overflow-auto">
+        <h2 class="text-2xl font-semibold text-white mb-4">Pending Approvals</h2>
+        <!-- <input v-model="searchQuery" type="text" placeholder="Search..." class="p-2 border rounded-md w-full mb-4 bg-gray-800 text-white"> -->
+        <table class="w-full text-white">
           <thead>
-            <tr class="bg-gray-200">
+            <tr class="bg-white/20">
               <th class="p-2 text-left">Name</th>
               <th class="p-2 text-left">Email</th>
-              <th class="p2 text-left">Position</th>
+              <th class="p-2 text-left">Position</th>
               <th class="p-2 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="request in requests" :key="request.user_id" class="border-t">
+            <tr v-for="request in requests" :key="request.user_id" class="border-t border-white/20">
               <td class="p-2">{{ request.name }}</td>
               <td class="p-2">{{ request.email }}</td>
               <td class="p-2">{{ request.position }}</td>
-              <td class="p-2 flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
-                <!-- Change request.id to request.user_id -->
+              <td class="p-2 flex space-x-2">
                 <button @click="approveRequest(request)"
-                  class="bg-green-500 text-white px-4 py-1 rounded hover:bg-green-600">Approve</button>
+                  class="bg-green-500 px-4 py-1 rounded-lg hover:bg-green-600">Approve</button>
                 <button @click="rejectRequest(request)"
-                  class="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600">Reject</button>
+                  class="bg-red-500 px-4 py-1 rounded-lg hover:bg-red-600">Reject</button>
               </td>
-            </tr>
-
-            <tr v-if="requests?.length === 0">
-              <td colspan="3" class="p-4 text-center">No pending requests</td>
             </tr>
           </tbody>
         </table>
       </div>
-
       <!-- Approved & Rejected Requests -->
-      <div class="mt-6 bg-white shadow-lg rounded-lg p-6 overflow-x-auto">
-        <h2 class="text-2xl font-semibold mb-4">Approved & Rejected Requests</h2>
-        <table class="w-full border-collapse">
-          <thead>
-            <tr class="bg-gray-200">
-              <th class="p-2 text-left">Name</th>
-              <th class="p-2 text-left">Email</th>
-              <th class="p-2 text-left">Status</th>
-              <th class="p-2 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="request in processedRequests" :key="request.user_id" class="border-t">
-              <td class="p-2">{{ request.name }}</td>
-              <td class="p-2">{{ request.email }}</td>
-              <td class="p-2">{{ request.status }}</td>
-              <td class="p-2">
-                <button v-if="request.status === 'Approved'" @click="deleteApproved(request)"
-                  class="bg-yellow-500 text-white px-4 py-1 rounded hover:bg-yellow-600">Delete</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="p-6 w-full max-w-5xl">
+        <div class="backdrop-blur-lg bg-white/10 shadow-lg rounded-2xl p-6 overflow-hidden hover:overflow-auto">
+          <h2 class="text-2xl font-semibold text-white mb-4">Approved - Rejected Requests</h2>
+          <table class="w-full text-white">
+            <thead>
+              <tr class="bg-white/20">
+                <th class="p-2 text-left">Name</th>
+                <th class="p-2 text-left">Email</th>
+                <th class="p-2 text-left">Status</th>
+                <th class="p-2 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="request in processedRequests" :key="request.user_id" class="border-t border-white/20">
+                <td class="p-2">{{ request.name }}</td>
+                <td class="p-2">{{ request.email }}</td>
+                <td class="p-2">{{ request.status }}</td>
+                <td class="p-2">
+                  <button v-if="request.status === 'Approved'" @click="deleteApproved(request)"
+                    class="bg-yellow-500 text-white px-4 py-1 rounded-lg hover:bg-yellow-600">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <!-- Message Input & Role Selection -->
-      <div class="mt-6 bg-white shadow-lg rounded-lg p-6">
-        <h2 class="text-2xl font-semibold mb-4">Send a Message</h2>
-        <div class="flex flex-col md:flex-row md:space-x-4">
-          <select v-model="selectedRole" class="p-2 border rounded-md w-full md:w-1/3" multiple>
+      <div class="mt-6 backdrop-blur-lg bg-white/10 shadow-lg rounded-2xl p-6">
+        <h2 class="text-2xl font-semibold text-white mb-4">Send a Message</h2>
+        <div class="flex flex-col md:flex-row md:space-x-4 ">
+          <select v-model="selectedRole"
+            class="p-2 border rounded-md w-full md:w-1/3 bg-transparent text-white overflow:hidden" required multiple>
             <option value="Veteran Coordinator">Veteran Coordinator</option>
             <option value="Assistant Coordinator">Assistant Coordinator</option>
             <option value="Student Coordinator">Student Coordinator</option>
             <option value="Club Members">Club Members</option>
           </select>
-            <textarea v-model="messageText" placeholder="Enter message..." rows="4"
-            class="p-2 border rounded-md flex-1"></textarea>
-          
+          <textarea v-model="messageText" placeholder="Enter message..." rows="4"
+            class="p-2 border rounded-md flex-1 bg-transparent text-white"></textarea>
         </div>
         <div class="flex justify-center mt-4">
-          <button @click="sendMessage" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Send</button>
+          <button @click="sendMessage"
+            class=" max-w-72 flex-1 flex items-center justify-center py-3 bg-white bg-opacity-20 rounded-xl hover:bg-opacity-30 transition">Send</button>
         </div>
       </div>
-
     </div>
   </div>
 </template>
@@ -189,15 +182,22 @@ export default {
     async sendMessage() {
       if (!this.selectedRole || !this.messageText.trim()) {
         alert("Please select a role and enter a message.");
+        
+        return;
+      }
+      if(this.selectedRole.length==0){
+        alert("Select who to send")
         return;
       }
 
       try {
-        
+
         await axios.post('http://127.0.0.1:5000/api/send_message', {
           role: this.selectedRole,
-          message: this.messageText
-        });
+          message: this.messageText,
+          postion:this.userdata['position'],
+          club:this.userdata['club']
+        })
 
         // Reset the input fields after successful message send
         this.messageText = "";
@@ -208,10 +208,33 @@ export default {
         console.error("Error sending message:", error);
         alert("Failed to send message.");
       }
-    }
-
+    },
+    position(user) {
+        if (user && typeof user=== "string") {
+          user = user.replace(/-/g, " ").toUpperCase();
+        }
+        return user;
+      },
   }
+
+
 };
 
 
 </script>
+<style scoped>
+/* For WebKit browsers (Chrome, Safari, Opera) */
+.select-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* For Firefox */
+.select-no-scrollbar {
+  scrollbar-width: none;
+}
+
+/* For IE and Edge */
+.select-no-scrollbar {
+  -ms-overflow-style: none;
+}
+</style>

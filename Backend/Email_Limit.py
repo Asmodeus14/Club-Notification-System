@@ -33,4 +33,26 @@ def check_brevo_email_quota(api_key):
         # Return error if the API request fails
         return f"Error: {response.json()}"
 
+import redis
+import json
+from datetime import datetime
+
+# Connect to Redis
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
+
+QUEUE_NAME = "email_queue"
+
+def add_to_email_queue(email, subject, content):
+    """Add email to Redis queue."""
+    email_data = {
+        "email": email,
+        "subject": subject,
+        "content": content,
+        "timestamp": datetime.now().isoformat()
+    }
+    redis_client.rpush(QUEUE_NAME, json.dumps(email_data))
+    print(f"📌 Queued email for {email}")
+    
+queued_emails = redis_client.lrange(QUEUE_NAME, 0, -1)
+print(f"Emails in the queue: {queued_emails}")
 
