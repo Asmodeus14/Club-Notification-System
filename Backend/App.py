@@ -176,21 +176,7 @@ def clear_rejected_table_if_full():
 def error_response(message, status_code):
     return jsonify({"error": message}), status_code
 
-# def send_email(to_email, subject, content):
-#     sender = {"name": "SRMU Club Notices",
-#               "email": "srmu.clubnotices@gmail.com"}
-#     to = [{"email": to_email, "name": to_email}]
-#     send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
-#         sender=sender, to=to, subject=subject, html_content=content
-#     )
 
-#     try:
-#         api_instance.send_transac_email(send_smtp_email)
-#         logging.info(f"Email sent to {to_email}")
-#     except ApiException as e:
-#         logging.error(f"Brevo API error: {str(e)}")
-#     except Exception as e:
-#         logging.error(f"Unexpected error sending email: {str(e)}")
 
 def send_email_to_students():
     conn=None
@@ -224,85 +210,79 @@ def send_email_to_students():
             conn.close()
 
 
-   
-def send_emails_apart_from_admin(message,postion,emails,club):
-    """Send emails to all users in the `users` table."""
+def send_emails_apart_from_admin(message, position, emails, club):
+    """
+    Send professional emails from a club representative to a list of users.
+    """
     try:
-        
         subject = f"Important Announcement from {club}"
         content = f"""
-            <p>Hello,</p>
-            <p>This is an important announcement from  {club}.</p>
-            <br>
-            <p>
-                {message}
-            </p>
-            <br>
-            <p>
-                From{postion}
-            </p>
-            <br>
-            <p>Thank you for using our service!</p>
+        <html>
+            <body>
+                <p>Dear Valued Member,</p>
+                <p>We hope this message finds you well. Please be informed of the following update from {club}:</p>
+                <p style="margin-left:20px;">{message}</p>
+                <p>Sincerely,<br>{position}<br>{club}</p>
+                <p>Thank you for your continued support.</p>
+            </body>
+        </html>
         """
-        add_to_email_queue(emails,subject,content)
-
-        logging.info(f"Successfully Queued the Emails")
-
+        add_to_email_queue(emails, subject, content)
+        logging.info("Successfully queued the emails.")
     except Exception as e:
         logging.error(f"Error sending emails: {str(e)}")
-        
-        
-def send_emails_from_admin(message,postion,emails):
-    """Send emails to all users in the `users` table."""
+
+
+def send_emails_from_admin(message, position, emails):
+    """
+    Send professional emails from the ADMIN to a list of users.
+    """
     try:
-        
-        subject = f"Important Announcement from ADMIN"
+        subject = "Important Announcement from Administration"
         content = f"""
-            <p>Hello,</p>
-            <p>This is an important announcement from  ADMIN.</p>
-            <br>
-            <p>
-                {message}
-            </p>
-            <br>
-            <p>
-                From{postion}
-            </p>
-            <br>
-            <p>Thank you for using our service!</p>
+        <html>
+            <body>
+                <p>Dear Valued Member,</p>
+                <p>We hope you are doing well. Please take note of the following announcement from our Administration:</p>
+                <p style="margin-left:20px;">{message}</p>
+                <p>Sincerely,<br>{position}<br>Administration</p>
+                <p>Thank you for your attention.</p>
+            </body>
+        </html>
         """
-        add_to_email_queue(emails,subject,content)
-
-        logging.info(f"Successfully Queued the Emails")
-
+        add_to_email_queue(emails, subject, content)
+        logging.info("Successfully queued the emails.")
     except Exception as e:
         logging.error(f"Error sending emails: {str(e)}")
-
 
 
 def send_approval_email(email, name, club, position):
     """
-    Send an email to the user notifying them of their approval.
+    Send a professional email notifying the user of their approval.
     """
     try:
-        subject = "Your Application Has Been Approved"
+        subject = "Application Approval Notification"
         content = f"""
-            <p>Dear {name},</p>
-            <p>We are pleased to inform you that your application has been approved!</p>
-            <p>Here are your details:</p>
-            <ul>
-                <li><strong>Club:</strong> {club}</li>
-                <li><strong>Position:</strong> {position}</li>
-            </ul>
-            <p>Thank you for joining us. We look forward to working with you!</p>
-            <p>Best regards,<br></p>
+        <html>
+            <body>
+                <p>Dear {name},</p>
+                <p>We are pleased to inform you that your application has been approved.</p>
+                <p>Please find your details below:</p>
+                <ul>
+                    <li><strong>Club:</strong> {club}</li>
+                    <li><strong>Position:</strong> {position}</li>
+                </ul>
+                <p>We look forward to your contributions and are excited to welcome you aboard.</p>
+                <p>Sincerely,<br>The {club} Team</p>
+            </body>
+        </html>
         """
-        if check_brevo_email_quota(Email_limit_API)>50:
+        # Example quota check; adjust the condition as needed.
+        if check_brevo_email_quota(Email_limit_API) > 50:
             send_single_email(email, subject, content)
             logging.info(f"Approval email sent to {email}")
-    
-    except : 
-        logging.error(f"Failed to send approval email to {email}")
+    except Exception as e:
+        logging.error(f"Failed to send approval email to {email}: {str(e)}")
 
 
 # Schemas for Input Validation
@@ -410,17 +390,29 @@ def forgot_password():
 
     reset_link = f"http://localhost:8080/reset-password?token={reset_token}"
     content = f"""
-        <p>You have requested to reset your password. Click the link below to proceed:</p>
-        <p><a href="{reset_link}">Reset Password</a></p>
-        <p>If you did not request this, please ignore this email.</p>
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <p>Dear Valued User,</p>
+        <p>You recently requested to reset your password. To proceed with the password reset, please click the button below:</p>
+        <p style="text-align: center;">
+        <a href="{reset_link}" style="display: inline-block; padding: 10px 20px; background-color: #007BFF; color: #ffffff; text-decoration: none; border-radius: 4px;">
+            Reset Your Password
+        </a>
+        </p>
+        <p>If you did not request a password reset, please disregard this email or contact our support team immediately.</p>
+        <p>Thank you for your prompt attention to this matter.</p>
+        <p>Sincerely,<br>Your Support Team</p>
+    </body>
+    </html>
     """
-    if check_brevo_email_quota(Email_limit_API) != 0:
-        
-        send_single_email(email, "Password Reset", content)
-    else:
-        return jsonify({"messeage": "Email Was not sent,Due to Email Limit"})
 
-    return jsonify({"message": "Password reset email sent"}), 200
+    if check_brevo_email_quota(Email_limit_API) != 0:
+        send_single_email(email, "Password Reset Request", content)
+    else:
+        return jsonify({"message": "Email was not sent due to email limit."})
+
+    return jsonify({"message": "Password reset email sent."}), 200
+
 
 
 @app.route('/api/get_user/<string:user_id>', methods=['GET'])
@@ -738,7 +730,7 @@ def send_message():
         if position=="student-coordinator":
             # student database isnt created
             
-            print("Students to send email based on club")
+            logging.info(f"Email sent to Students of{club}")
             
             
         elif position=="Admin":
@@ -748,7 +740,7 @@ def send_message():
             emails=cur.fetchall()
             emails = [dict(row) for row in emails]
             send_emails_from_admin(message,position,emails)
-            print("Admin to send email to all user")  
+            logging.info(f"Email sent from ADMIN to {role} of all clubs")  
             
             
               
@@ -760,7 +752,7 @@ def send_message():
             emails=cur.fetchall()
             emails = [dict(row) for row in emails]
             send_emails_apart_from_admin(message,position,emails,club)
-            print("user table based on club ")
+            logging.info(f"Email sent from {position} to members of {club}")
         
         
         
