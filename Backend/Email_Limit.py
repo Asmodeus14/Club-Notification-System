@@ -53,6 +53,6 @@ def add_to_email_queue(email, subject, content):
     redis_client.rpush(QUEUE_NAME, json.dumps(email_data))
     print(f"📌 Queued email for {email}")
     
-queued_emails = redis_client.lrange(QUEUE_NAME, 0, -1)
-print(f"Emails in the queue: {queued_emails}")
+# queued_emails = redis_client.lrange(QUEUE_NAME, 0, -1)
+# print(f"Emails in the queue: {queued_emails}")
 

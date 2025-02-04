@@ -1,5 +1,4 @@
-import sib_api_v3_sdk
-from sib_api_v3_sdk.rest import ApiException
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import logging
@@ -11,7 +10,10 @@ from dotenv import load_dotenv
 import os
 from marshmallow import Schema, fields, ValidationError
 import secrets
-from Email_Limit import check_brevo_email_quota
+from email_ import send_single_email
+from Email_Limit import check_brevo_email_quota,add_to_email_queue
+
+
 
 reset_token = secrets.token_urlsafe(32)
 
@@ -47,11 +49,6 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Initialize Brevo API
-configuration = sib_api_v3_sdk.Configuration()
-configuration.api_key['api-key'] = app.config["BREVO_API_KEY"]
-api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
-    sib_api_v3_sdk.ApiClient(configuration))
-
 # Database Utility Functions
 
 
@@ -119,16 +116,7 @@ def init_db():
             status TEXT DEFAULT 'Rejected'
         )
     ''')
-    cur.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS emails(
-            id SERIAL PRIMARY KEY,
-            email VARCHAR(255),
-            content TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        '''
-    )
+    
 
     # Insert admin if not exists
     cur.execute("SELECT * FROM admin WHERE user_id = 'Admin'")
@@ -145,28 +133,66 @@ def init_db():
 init_db()
 
 # Helper Functions
+def clear_rejected_table_if_full():
+    """
+    Clears the oldest entries from the `rejected` table if the number of rows exceeds 50.
+    """
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
 
+        # Get the current count of rows in the `rejected` table
+        cur.execute("SELECT COUNT(*) FROM rejected")
+        count = cur.fetchone()['count']
+
+        # If the count exceeds 50, delete the oldest entries
+        if count > 50:
+            # Delete the oldest entries, keeping only the latest 50
+            cur.execute("""
+                DELETE FROM rejected
+                WHERE id IN (
+                    SELECT id FROM rejected
+                    ORDER BY id ASC
+                    LIMIT (SELECT COUNT(*) - 50 FROM rejected)
+                )
+            """)
+            conn.commit()
+            logging.info(f"Cleared {count - 50} oldest entries from the `rejected` table.")
+
+    except Exception as e:
+        logging.error(f"Error clearing `rejected` table: {str(e)}")
+        if conn:
+            conn.rollback()
+
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+            
 
 def error_response(message, status_code):
     return jsonify({"error": message}), status_code
 
-def send_email(to_email, subject, content):
-    sender = {"name": "SRMU Club Notices",
-              "email": "srmu.clubnotices@gmail.com"}
-    to = [{"email": to_email, "name": to_email}]
-    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
-        sender=sender, to=to, subject=subject, html_content=content
-    )
+# def send_email(to_email, subject, content):
+#     sender = {"name": "SRMU Club Notices",
+#               "email": "srmu.clubnotices@gmail.com"}
+#     to = [{"email": to_email, "name": to_email}]
+#     send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+#         sender=sender, to=to, subject=subject, html_content=content
+#     )
 
-    try:
-        api_instance.send_transac_email(send_smtp_email)
-        logging.info(f"Email sent to {to_email}")
-    except ApiException as e:
-        logging.error(f"Brevo API error: {str(e)}")
-    except Exception as e:
-        logging.error(f"Unexpected error sending email: {str(e)}")
+#     try:
+#         api_instance.send_transac_email(send_smtp_email)
+#         logging.info(f"Email sent to {to_email}")
+#     except ApiException as e:
+#         logging.error(f"Brevo API error: {str(e)}")
+#     except Exception as e:
+#         logging.error(f"Unexpected error sending email: {str(e)}")
 
-def loged_email():
+def send_email_to_students():
     conn=None
     cur=None
     if check_brevo_email_quota(Email_limit_API)==0:
@@ -199,64 +225,59 @@ def loged_email():
 
 
    
-def send_emails_to_all_users():
+def send_emails_apart_from_admin(message,postion,emails,club):
     """Send emails to all users in the `users` table."""
-    conn = None
-    cur = None
     try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        # Fetch all emails from the `users` table
-        cur.execute("SELECT email FROM users")
-        users = cur.fetchall()
-        emails = [user['email'] for user in users]
-
-        # Check if the number of emails exceeds 70
-        if len(emails) > 200:
-            logging.warning(f"Number of emails to send ({len(emails)}) exceeds 200. Proceeding anyway.")
-
-        # Send emails to all users
-        subject = "Important Announcement"
-        content = """
+        
+        subject = f"Important Announcement from {club}"
+        content = f"""
             <p>Hello,</p>
-            <p>This is an important announcement from Your App.</p>
+            <p>This is an important announcement from  {club}.</p>
+            <br>
+            <p>
+                {message}
+            </p>
+            <br>
+            <p>
+                From{postion}
+            </p>
+            <br>
             <p>Thank you for using our service!</p>
         """
+        add_to_email_queue(emails,subject,content)
+
+        logging.info(f"Successfully Queued the Emails")
+
+    except Exception as e:
+        logging.error(f"Error sending emails: {str(e)}")
         
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        # SQL query to insert email, content, and current datetime
-        insert_query = """
-        INSERT INTO emails (email, content, created_at)
-        VALUES (%s, %s, %s);
+        
+def send_emails_from_admin(message,postion,emails):
+    """Send emails to all users in the `users` table."""
+    try:
+        
+        subject = f"Important Announcement from ADMIN"
+        content = f"""
+            <p>Hello,</p>
+            <p>This is an important announcement from  ADMIN.</p>
+            <br>
+            <p>
+                {message}
+            </p>
+            <br>
+            <p>
+                From{postion}
+            </p>
+            <br>
+            <p>Thank you for using our service!</p>
         """
+        add_to_email_queue(emails,subject,content)
 
-        # Get the current date and time
-        current_datetime = datetime.now()
-
-        success_count = 0
-        logged_email=0
-        for email in emails:
-            if check_brevo_email_quota(Email_limit_API)>100:
-                send_email(to_email=email,subject=subject,content=content)
-                success_count+=1
-            else:
-                cur.execute(insert_query, (email, content, current_datetime))
-                logged_email+=1
-
-        logging.info(f"Successfully sent {success_count} out of {len(emails)} emails.")
+        logging.info(f"Successfully Queued the Emails")
 
     except Exception as e:
         logging.error(f"Error sending emails: {str(e)}")
 
-    finally:
-        # Close the database connection and cursor
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 
 def send_approval_email(email, name, club, position):
@@ -277,11 +298,11 @@ def send_approval_email(email, name, club, position):
             <p>Best regards,<br></p>
         """
         if check_brevo_email_quota(Email_limit_API)>50:
-            send_email(email, subject, content)
+            send_single_email(email, subject, content)
             logging.info(f"Approval email sent to {email}")
     
-    except ApiException as e:
-        logging.error(f"Failed to send approval email to {email}: {str(e)}")
+    except : 
+        logging.error(f"Failed to send approval email to {email}")
 
 
 # Schemas for Input Validation
@@ -394,8 +415,8 @@ def forgot_password():
         <p>If you did not request this, please ignore this email.</p>
     """
     if check_brevo_email_quota(Email_limit_API) != 0:
-        print(check_brevo_email_quota(Email_limit_API))
-        send_email(email, "Password Reset", content)
+        
+        send_single_email(email, "Password Reset", content)
     else:
         return jsonify({"messeage": "Email Was not sent,Due to Email Limit"})
 
@@ -424,6 +445,7 @@ def get_user(user_id):
         if user:
             user = dict(user)  # Convert to dictionary (for pop to work)
             user.pop("password", None)
+            
             return jsonify(user), 200
         else:
             return jsonify({"error": "User not found"}), 404
@@ -568,7 +590,7 @@ def reject_request(id):
         cur.execute("DELETE FROM approval WHERE user_id = %s", (id,))
 
         conn.commit()
-
+        clear_rejected_table_if_full()
         return jsonify({"message": "User rejected and moved to rejected table"}), 200
 
     except Exception as e:
@@ -705,10 +727,55 @@ def send_message():
     data = request.json
     role = data.get('role')
     message = data.get('message')
+    position=data.get('postion')
+    club=data.get('club')
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
 
-    print(role, message)
-    return jsonify({"message": "Message sent successfully"}), 200
+    try:
+        emails=[]
+        if position=="student-coordinator":
+            # student database isnt created
+            
+            print("Students to send email based on club")
+            
+            
+        elif position=="Admin":
+            cur.execute(
+                "SELECT email FROM users"
+            )
+            emails=cur.fetchall()
+            emails = [dict(row) for row in emails]
+            send_emails_from_admin(message,position,emails)
+            print("Admin to send email to all user")  
+            
+            
+              
+        else:
+            cur.execute(
+                "SELECT email FROM users WHERE club = %s",
+                (club,)
+            )
+            emails=cur.fetchall()
+            emails = [dict(row) for row in emails]
+            send_emails_apart_from_admin(message,position,emails,club)
+            print("user table based on club ")
+        
+        
+        
+        
+        return jsonify({"message": "Message sent successfully"}), 200
 
+        
+    except:
+        conn.rollback()
+        logging.error({"Error while sending message:Likely to be beacause REDIS or DRMATIQ"})
+        return jsonify({"error": "Something went wrong"}), 500
+    
+    finally:
+        cur.close()
+        conn.close()
 
 # Run the Flask App
 if __name__ == '__main__':

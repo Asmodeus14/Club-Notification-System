@@ -18,15 +18,19 @@ api_key=os.getenv("BREVO_API_KEY")
 redis_client = Redis(host="localhost", port=6379, db=0)
 
 @dramatiq.actor(max_retries=3)
-def send_single_email( to_email, subject, content):
+def send_single_email( to_email, subject, content,use_lock=True):
     lock_key = f"email_lock:{to_email}"
+    
     if os.getpid() == os.getppid():  # Prevents main process from executing
         print(f"⚠️ Main process detected (PID: {os.getpid()}), skipping execution.")
         return
-    # Prevent duplicate sends
-    if redis_client.exists(lock_key):
+    lock_key = f"email_lock:{to_email}"
+    
+    if use_lock and redis_client.exists(lock_key):
         print(f"⚠️ Email to {to_email} is already being processed. Skipping.")
         return
+    if use_lock:
+        redis_client.set(lock_key, "1", ex=120)
     
     # Set a lock (expires in 2 minutes)
     redis_client.set(lock_key, "1", ex=120)
@@ -64,12 +68,12 @@ def send_single_email( to_email, subject, content):
 @dramatiq.actor
 def send_bulk_emails( emails, subject, content):
     """Queue multiple emails for processing, ensuring each email is queued only once."""
-    unique_emails = list(set(emails))  # Remove duplicates before queuing
+    unique_emails = list({email_dict["email"] for email_dict in emails})
 
     for email in unique_emails:
         lock_key = f"email_lock:{email}"
         if not redis_client.exists(lock_key):  # Only queue if no lock exists
-            send_single_email.send(api_key, email, subject, content)
+            send_single_email.send( email, subject, content,False)
         else:
             print(f"⚠️ Skipping {email} (already queued/processing)")
     
@@ -88,8 +92,10 @@ def process_email_queue():
         if not email_data:
             print("✅ No more emails to send today.")
             break  # Stop if queue is empty
+        
         # Deserialize the byte data from Redis
         email_info = json.loads(email_data.decode('utf-8'))  # decode from bytes and load JSON
+        
         # Ensure email_info is correctly structured
         email_list = email_info["email"]  # Get the list of emails (you can loop through it for bulk sending)
         subject = email_info["subject"]
@@ -98,7 +104,7 @@ def process_email_queue():
         # Log email for debugging
         print(f"Processing email: {email_list}")
         
-        send_bulk_emails.send(api_key, email_list, subject, content)
+        send_bulk_emails.send(email_list, subject, content)
         count += 1
         time.sleep(1)  # Avoid hitting API rate limits
 
