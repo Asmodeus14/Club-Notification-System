@@ -138,4 +138,14 @@ def process_email_queue():
         time.sleep(1)
 
     logger.info(f"Processed {count} emails today.")
+    
+# from flask_socketio import SocketIO, emit
 
+@dramatiq.actor
+def send_notification(user_id, message):
+    from App2 import socketio
+    # Simulate a background process delay
+    time.sleep(2)
+    
+    socketio.emit('notification', {'user_id': user_id, 'message': message})
+    print(f"Notification sent to user {user_id}: {message}")

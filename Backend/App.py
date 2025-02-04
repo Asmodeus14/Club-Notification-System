@@ -1,5 +1,5 @@
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify,g,session
 from flask_cors import CORS
 import logging
 import psycopg2
@@ -12,20 +12,26 @@ from marshmallow import Schema, fields, ValidationError
 import secrets
 from email_ import send_single_email
 from Email_Limit import check_brevo_email_quota,add_to_email_queue
+from datetime import datetime, timedelta
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 
+app = Flask(__name__)
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    storage_uri="redis://localhost:6379/1",
+    default_limits=["200 per day", "50 per hour"]
+)
 
 reset_token = secrets.token_urlsafe(32)
 
 # Load environment variables
 load_dotenv('API.env')
 
-# Initialize Flask app
-app = Flask(__name__)
 
 # Configuration
-
-
 class Config:
     DB_CONFIG = {
         "dbname": os.getenv("DB_NAME"),
@@ -37,10 +43,11 @@ class Config:
     CORS_ORIGINS = ["http://localhost:8080", "http://192.168.101.86:8080"]
     SECRET_KEY = os.getenv("SECRET_KEY")
     BREVO_API_KEY = os.getenv("BREVO_API_KEY")
-
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=1)  # Set session lifetime to 1 hour
 
 app.config.from_object(Config)
 Email_limit_API = app.config["BREVO_API_KEY"]
+
 # Enable CORS securely
 CORS(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}})
 
@@ -48,17 +55,28 @@ CORS(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}})
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Initialize Brevo API
+
 # Database Utility Functions
 
 
-def get_db_connection():
-    try:
-        return psycopg2.connect(**app.config["DB_CONFIG"], cursor_factory=RealDictCursor)
-    except psycopg2.Error as e:
-        logging.error(f"Database connection error: {str(e)}")
-        return None
+from psycopg2 import pool
 
+# Add after app configuration:
+connection_pool = pool.SimpleConnectionPool(
+    minconn=1,
+    maxconn=20,
+    **app.config["DB_CONFIG"]
+)
+
+def get_db_connection():
+    return connection_pool.getconn()
+
+# Add teardown to return connections
+@app.teardown_request
+def close_db_connection(exception=None):
+    conn = getattr(g, '_database_connection', None)
+    if conn is not None:
+        connection_pool.putconn(conn)
 
 def init_db():
     conn = get_db_connection()
@@ -75,7 +93,8 @@ def init_db():
             club TEXT NOT NULL,
             name TEXT NOT NULL,
             status TEXT DEFAULT 'Approved',
-            reset_token TEXT
+            reset_token TEXT,
+            reset_token_expiry TIMESTAMP
         )
     ''')
 
@@ -301,9 +320,13 @@ class RegisterSchema(Schema):
     name = fields.Str(required=True)
 
 # API Routes
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
 
 
 @app.route('/api/login', methods=['POST'])
+@limiter.limit("5/minute")
 def login():
     try:
         data = LoginSchema().load(request.form)
@@ -314,7 +337,7 @@ def login():
     password = data['password']
 
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
 
     # Check user table
     cur.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
@@ -328,14 +351,23 @@ def login():
     conn.close()
 
     if user and check_password_hash(user['password'], password):
+        # Mark session as permanent so it uses the lifetime defined in config
+        session.permanent = True
+        session['user_id'] = user_id
+        session['role'] = user['position']  # or any other info you need
         return jsonify({"message": "Login successful", "user_id": user_id, "name": user['name'], "position": user['position'], "course": user['course'], "club": user['club']}), 200
+    
     elif admin and check_password_hash(admin['password'], password):
+        session.permanent = True
+        session['user_id'] = user_id
+        session['role'] = admin['position']
         return jsonify({"message": "Login successful", "user_id": user_id, "position": admin['position']}), 200
     else:
         return error_response("Invalid credentials", 401)
 
 
 @app.route('/api/register', methods=['POST'])
+@limiter.limit("3/minute")
 def register():
     try:
         data = RegisterSchema().load(request.form)
@@ -381,9 +413,14 @@ def forgot_password():
         return error_response("Email does not match", 400)
     # Generate a secure reset token
     reset_token = secrets.token_urlsafe(32)
+    expiry_time = datetime.utcnow() + timedelta(hours=1)  # <-- Add this
 
-    cur.execute("UPDATE users SET reset_token = %s WHERE email = %s",
-                (reset_token, user['email']))
+# Update the database
+    cur.execute("""
+        UPDATE users 
+        SET reset_token = %s, reset_token_expiry = %s 
+        WHERE email = %s
+    """, (reset_token, expiry_time, user['email']))
     conn.commit()
     cur.close()
     conn.close()
@@ -419,7 +456,7 @@ def forgot_password():
 def get_user(user_id):
     try:
         conn = get_db_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
 
         # Fetch from users table
         cur.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
@@ -432,7 +469,7 @@ def get_user(user_id):
 
         cur.close()
         conn.close()
-
+        
         # If user exists, remove password field before returning
         if user:
             user = dict(user)  # Convert to dictionary (for pop to work)
@@ -451,7 +488,7 @@ def get_user(user_id):
 def get_approvals(position, club_name):
     try:
         conn = get_db_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
 
         # Normalize position for case-insensitive comparison
         position = position.lower()
@@ -692,7 +729,9 @@ def reset_password():
 
         if not user:
             return jsonify({"error": "Invalid or expired token"}), 400
-
+        
+        if datetime.utcnow() > user['reset_token_expiry']:
+            return jsonify({"error": "Token expired"}), 400
         # Update the user's password and clear the reset token
         hashed_password = generate_password_hash(new_password, salt_length=5)
         cur.execute(

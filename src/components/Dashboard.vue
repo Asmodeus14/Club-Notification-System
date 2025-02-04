@@ -137,8 +137,8 @@ export default {
       if (!this.userdata.position) return;
       try {
         const response = await axios.get(`http://127.0.0.1:5000/api/approvals/${this.userdata.position}-${this.userdata.club}`);
-        this.requests = response.data.pending || [];
-        this.processedRequests = response.data.processed || [];
+        this.requests = response.data.pending || {};
+        this.processedRequests = response.data.processed || {};
         console.log("Requests:", this.requests, "Processed:", this.processedRequests);
       } catch (error) {
         console.error("Error fetching requests:", error);
@@ -211,7 +211,7 @@ export default {
     },
     position(user) {
         if (user && typeof user=== "string") {
-          user = user.replace(/-/g, " ").toUpperCase();
+          user = user.replace("-", " ").toUpperCase();
         }
         return user;
       },

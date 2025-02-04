@@ -7,10 +7,18 @@ import SignupForm from './components/Signup.vue';
 import Forgotpassword from './components/Forgotpassword.vue';
 import AdministratorManager from './components/Dashboard.vue';
 import ResetPassword from './components/ResetPassword.vue';
+import HomePage from './components/Home.vue';
+import ClubsPage from './components/Clubs.vue';
+import ClubSignFrom from './components/ClubSignFrom.vue';
 
 const routes = [
     {
-        path: '/',
+        path:'/',
+        name:'Home-Page',
+        component:HomePage,
+    },
+    {
+        path: '/login',
         name: 'login',
         component: LoginForm,
     },
@@ -37,7 +45,16 @@ const routes = [
         component:ResetPassword,
         
     },
-    
+    {
+        path:'/Clubs',
+        name:"ClubPage",
+        component:ClubsPage
+    },
+    {
+        path:'/ClubFrom',
+        name:"ClubForm",
+        component:ClubSignFrom
+    },
 ];
 
 const router = createRouter({

@@ -42,7 +42,7 @@
 
       <!-- Back to Login -->
       <div class="text-center text-white mt-4 text-sm">
-        <p>Remember your password? <router-link to="/" class="underline hover:text-blue-300">Login</router-link></p>
+        <p>Remember your password? <router-link to="/login" class="underline hover:text-blue-300">Login</router-link></p>
       </div>
     </div>
   </div>
