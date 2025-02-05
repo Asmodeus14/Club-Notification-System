@@ -149,3 +149,6 @@ def send_notification(user_id, message):
     
     socketio.emit('notification', {'user_id': user_id, 'message': message})
     print(f"Notification sent to user {user_id}: {message}")
+
+# queued_emails = redis_client.lrange(QUEUE_NAME, 0, -1)
+# print(f"Emails in the queue: {queued_emails}")

@@ -1,6 +1,6 @@
 
 from psycopg2 import pool
-from flask import Flask, request, jsonify, g, session,render_template
+from flask import Flask, request, jsonify, g, session,render_template,abort
 from flask_cors import CORS
 import logging
 from psycopg2.extras import RealDictCursor
@@ -40,10 +40,9 @@ class Config:
         hours=1)  # Set session lifetime to 1 hour
 
 
-app = Flask(__name__)
+app = Flask(__name__,template_folder=os.path.join(os.getcwd(), 'template'))
 app.config.from_object(Config)
-socketio = SocketIO(app, cors_allowed_origins="http://localhost:8080",
-                    message_queue="redis://localhost:6379")
+socketio = SocketIO(app, cors_allowed_origins="http://localhost:8080",message_queue="redis://localhost:6379")
 
 
 @socketio.on('connect')
@@ -74,7 +73,11 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s - %(levelname)s - %(message)s")
 
 
-# Database Utility Functions
+# Error Handeling
+
+@app.errorhandler(500)
+def not_found(error):
+    return render_template("505.html"), 500
 
 
 # Add after app configuration:
@@ -167,6 +170,14 @@ def init_db():
         unsubscribe_token VARCHAR(255)
     )
     ''')
+    cur.execute( '''
+        CREATE TABLE IF NOT EXISTS club_messages (
+            id SERIAL PRIMARY KEY,
+            club_name VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        ''')
 
     # Insert admin if not exists
     cur.execute("SELECT * FROM admin WHERE user_id = 'Admin'")
@@ -183,6 +194,29 @@ def init_db():
 init_db()
 
 # Helper Functions
+def delete_old_messages():
+    try:
+        conn=get_db_connection()
+        cursor = conn.cursor()
+
+        # Define the delete query (delete messages older than 7 days)
+        delete_query = """
+            DELETE FROM club_messages
+            WHERE sent_at < %s;
+        """
+
+        # Calculate the date 7 days ago
+        seven_days_ago = datetime.now() - timedelta(days=7)
+        cursor.execute(delete_query, (seven_days_ago,))
+        conn.commit()
+
+        # Close the cursor and connection
+        cursor.close()
+        conn.close()
+
+
+    except Exception as e:
+        logging.info(f"Error deleting old messages: {e}")
 
 
 def clear_rejected_table_if_full():
@@ -229,37 +263,6 @@ def clear_rejected_table_if_full():
 def error_response(message, status_code):
     return jsonify({"error": message}), status_code
 
-
-def send_email_to_students():
-    conn = None
-    cur = None
-    if check_brevo_email_quota(Email_limit_API) == 0:
-        exit
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT email FROM emails")
-        users = cur.fetchall()
-        cur.execute("SELECT content FROM emails")
-        contents = cur.fetchall()
-
-        emails = [user['email'] for user in users]
-        contents = [content['content'] for content in contents]
-
-        print(emails, contents)
-
-        if len(emails) > 200:
-            logging.warning(
-                f"Number of emails to send ({len(emails)}) in Logs")
-
-    except Exception as e:
-        logging.error(f"Error sending emails: {str(e)}")
-    finally:
-        # Close the database connection and cursor
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 
 def send_emails_apart_from_admin(message, position, emails, club):
@@ -837,9 +840,18 @@ def send_message():
             cur.execute("SELECT email FROM student_club_subscriptions WHERE club = %s AND notification_consent = %s", (club, True))
             emails=cur.fetchall()
             emails = [dict(row) for row in emails]
-            send_emails_apart_from_admin(message, position, emails, club)
-            logging.info(f"Email sent from {position} to members of {club}")           
+            send_emails_apart_from_admin(message, position, emails, club)           
+            logging.info(f"Email sent from {position} to members of {club}") 
+            
+            insert_query = """
+            INSERT INTO club_messages (club_name, message, sent_at)
+            VALUES (%s, %s, %s);
+            """
+            current_timestamp = datetime.now()
+            cur.execute(insert_query, (club, message, current_timestamp))
+            conn.commit()          
             send_notification.send(club, message)
+            delete_old_messages()
             logging.info(f"Email sent to Students of{club}")
 
         elif position == "Admin":
@@ -890,9 +902,39 @@ def unsuscribe():
             cur.close()
             conn.close()
             logging.info(f"Student Deleted")
-            return render_template("./template/Unsuscribe.html")
+            abort(500,"Invalid User")
+            return jsonify("Deleted"),200
     except:
-        return jsonify("Invalid User"),500
+        abort(500,"Invalid User")
+
+@app.route('/api/events', methods=['GET'])
+def get_events():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT id, message, sent_at, club_name 
+            FROM club_messages  
+            ORDER BY sent_at ASC
+        ''')
+        events = cur.fetchall()
+        events_list = [
+            {
+                'id': event[0],
+                'message': event[1],
+                'date_time': event[2].isoformat(),
+                'club': event[3]
+            }
+            for event in events
+        ]
+        return jsonify(events_list)
+        
+    except Exception as e:
+        print(f"Error fetching events: {str(e)}")
+        return jsonify({'error': 'Failed to fetch events'}), 500
+    finally:
+        cur.close()
+        conn.close()
           
 @app.route('/api/ClubForm', methods=['POST'])
 def studentdata():

@@ -43,6 +43,37 @@
       </transition>
     </div>
 
+    <!-- Events Section -->
+    <div class="bg-white bg-opacity-10 backdrop-blur-md p-6 rounded-lg mt-6 shadow-lg w-full max-w-6xl">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold text-white">Upcoming Events</h2>
+        <button @click="fetchEvents"
+          class="bg-indigo-900 text-white px-4 py-2 rounded-lg hover:scale-105 transition-transform">
+          Refresh Events
+        </button>
+      </div>
+
+      <div v-if="loadingEvents" class="text-center text-white py-4">
+        Loading events...
+      </div>
+
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div v-for="event in events" :key="event.id"
+          class="bg-white bg-opacity-20 backdrop-blur-md p-4 rounded-lg hover:shadow-md transition">
+          <div class="text-yellow-300 text-sm mb-2">
+            {{ formatDate(event.date_time) }}
+          </div>
+          <h3 class="text-white font-semibold mb-2">{{ event.message }}</h3>
+          <div class="text-gray-300 text-sm">
+            Organized by: {{ event.club }}
+          </div>
+        </div>
+        <div v-if="!events.length" class="text-center text-gray-300 col-span-full py-4">
+          No upcoming events found
+        </div>
+      </div>
+    </div>
+
     <!-- Slideshow Section -->
     <div class="relative w-full max-w-5xl mt-6 overflow-hidden rounded-lg shadow-lg h-96">
       <transition-group name="slide-fade" tag="div" class="relative h-full">
@@ -83,7 +114,7 @@
 <script>
 import io from 'socket.io-client';
 import NotificationPermission from './Notification.vue';
-
+import axios from 'axios'
 export default {
   name: 'HomePage',
   components: { NotificationPermission },
@@ -95,19 +126,23 @@ export default {
       slides: [
         new URL('@/assets/images/arts.jpg', import.meta.url).href,
         new URL('@/assets/images/sports.jpg', import.meta.url).href,
-        new URL('@/assets/images/cultural.jpg', import.meta.url).href
+        new URL('@/assets/images/cultural.jpg', import.meta.url).href,
+        new URL('@/assets/images/tech-club.jpg', import.meta.url).href
       ],
-      currentSlide: 0
+      currentSlide: 0,
+      events: [],
+      loadingEvents: false,
     };
   },
   mounted() {
-  this.socket = io('http://localhost:5000'); // Use socket.io-client here instead of WebSocket
-  this.socket.on('notification', (data) => {
-    this.notifications.unshift({ ...data, timestamp: new Date() });
-    this.showBrowserNotification(data.message);
-  });
-  this.startSlideShow();
-},
+    this.socket = io('http://localhost:5000'); // Use socket.io-client here instead of WebSocket
+    this.socket.on('notification', (data) => {
+      this.notifications.unshift({ ...data, timestamp: new Date() });
+      this.showBrowserNotification(data.message);
+    });
+    this.startSlideShow();
+    this.fetchEvents();
+  },
 
   methods: {
     showBrowserNotification(message) {
@@ -128,7 +163,28 @@ export default {
       this.slideInterval = setInterval(() => {
         this.currentSlide = (this.currentSlide + 1) % this.slides.length;
       }, 5000);
-    }
+    },
+    async fetchEvents() {
+      this.loadingEvents = true;
+      try {
+        const response = await axios.get('http://127.0.0.1:5000/api/events');
+        this.events = response.data;
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      } finally {
+        this.loadingEvents = false;
+      }
+    },
+    formatDate(dateString) {
+    const options = {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  }
   },
   beforeUnmount() {
     if (this.socket) this.socket.disconnect();
