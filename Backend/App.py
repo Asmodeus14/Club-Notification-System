@@ -1,8 +1,8 @@
 
-from flask import Flask, request, jsonify,g,session
+from psycopg2 import pool
+from flask import Flask, request, jsonify, g, session,render_template
 from flask_cors import CORS
 import logging
-import psycopg2
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -10,20 +10,13 @@ from dotenv import load_dotenv
 import os
 from marshmallow import Schema, fields, ValidationError
 import secrets
-from email_ import send_single_email
-from Email_Limit import check_brevo_email_quota,add_to_email_queue
+from email_ import send_single_email, send_notification
+from Email_Limit import check_brevo_email_quota, add_to_email_queue
 from datetime import datetime, timedelta
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_socketio import SocketIO, emit
 
-
-app = Flask(__name__)
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    storage_uri="redis://localhost:6379/1",
-    default_limits=["200 per day", "50 per hour"]
-)
 
 reset_token = secrets.token_urlsafe(32)
 
@@ -40,16 +33,41 @@ class Config:
         "host": os.getenv("DB_HOST"),
         "port": os.getenv("DB_PORT")
     }
-    CORS_ORIGINS = ["http://localhost:8080", "http://192.168.101.86:8080"]
+    CORS_ORIGINS = ["*"]
     SECRET_KEY = os.getenv("SECRET_KEY")
     BREVO_API_KEY = os.getenv("BREVO_API_KEY")
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=1)  # Set session lifetime to 1 hour
+    PERMANENT_SESSION_LIFETIME = timedelta(
+        hours=1)  # Set session lifetime to 1 hour
 
+
+app = Flask(__name__)
 app.config.from_object(Config)
+socketio = SocketIO(app, cors_allowed_origins="http://localhost:8080",
+                    message_queue="redis://localhost:6379")
+
+
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client disconnected')
+
+
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    storage_uri="redis://localhost:6379/1",
+    default_limits=["200 per day", "50 per hour"]
+)
+
+
 Email_limit_API = app.config["BREVO_API_KEY"]
 
 # Enable CORS securely
-CORS(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}})
+CORS(app, resources={r"/*": {"origins": app.config["CORS_ORIGINS"]}})
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO,
@@ -59,8 +77,6 @@ logging.basicConfig(level=logging.INFO,
 # Database Utility Functions
 
 
-from psycopg2 import pool
-
 # Add after app configuration:
 connection_pool = pool.SimpleConnectionPool(
     minconn=1,
@@ -68,15 +84,19 @@ connection_pool = pool.SimpleConnectionPool(
     **app.config["DB_CONFIG"]
 )
 
+
 def get_db_connection():
     return connection_pool.getconn()
 
 # Add teardown to return connections
+
+
 @app.teardown_request
 def close_db_connection(exception=None):
     conn = getattr(g, '_database_connection', None)
     if conn is not None:
         connection_pool.putconn(conn)
+
 
 def init_db():
     conn = get_db_connection()
@@ -135,7 +155,18 @@ def init_db():
             status TEXT DEFAULT 'Rejected'
         )
     ''')
-    
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS student_club_subscriptions (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255),
+        student_id VARCHAR(255),
+        email VARCHAR(255),
+        year VARCHAR(50),
+        club VARCHAR(255),
+        notification_consent BOOLEAN,
+        unsubscribe_token VARCHAR(255)
+    )
+    ''')
 
     # Insert admin if not exists
     cur.execute("SELECT * FROM admin WHERE user_id = 'Admin'")
@@ -152,6 +183,8 @@ def init_db():
 init_db()
 
 # Helper Functions
+
+
 def clear_rejected_table_if_full():
     """
     Clears the oldest entries from the `rejected` table if the number of rows exceeds 50.
@@ -178,7 +211,8 @@ def clear_rejected_table_if_full():
                 )
             """)
             conn.commit()
-            logging.info(f"Cleared {count - 50} oldest entries from the `rejected` table.")
+            logging.info(
+                f"Cleared {count - 50} oldest entries from the `rejected` table.")
 
     except Exception as e:
         logging.error(f"Error clearing `rejected` table: {str(e)}")
@@ -190,35 +224,34 @@ def clear_rejected_table_if_full():
             cur.close()
         if conn:
             conn.close()
-            
+
 
 def error_response(message, status_code):
     return jsonify({"error": message}), status_code
 
 
-
 def send_email_to_students():
-    conn=None
-    cur=None
-    if check_brevo_email_quota(Email_limit_API)==0:
+    conn = None
+    cur = None
+    if check_brevo_email_quota(Email_limit_API) == 0:
         exit
     try:
-        conn=get_db_connection()
-        cur=conn.cursor()
+        conn = get_db_connection()
+        cur = conn.cursor()
         cur.execute("SELECT email FROM emails")
         users = cur.fetchall()
         cur.execute("SELECT content FROM emails")
-        contents=cur.fetchall()
-        
+        contents = cur.fetchall()
+
         emails = [user['email'] for user in users]
-        contents=[content['content'] for content in contents]
-        
-        print(emails,contents)
-        
+        contents = [content['content'] for content in contents]
+
+        print(emails, contents)
+
         if len(emails) > 200:
-            logging.warning(f"Number of emails to send ({len(emails)}) in Logs")
-        
-            
+            logging.warning(
+                f"Number of emails to send ({len(emails)}) in Logs")
+
     except Exception as e:
         logging.error(f"Error sending emails: {str(e)}")
     finally:
@@ -275,31 +308,62 @@ def send_emails_from_admin(message, position, emails):
         logging.error(f"Error sending emails: {str(e)}")
 
 
-def send_approval_email(email, name, club, position):
+def send_approval_email(email, name, club, position,unsubscribe_token, isstudent):
     """
     Send a professional email notifying the user of their approval.
     """
     try:
-        subject = "Application Approval Notification"
-        content = f"""
-        <html>
+        if isstudent is False:
+            subject = "Application Approval Notification"
+            content = f"""
+            <html>
+                <body>
+                    <p>Dear {name},</p>
+                    <p>We are pleased to inform you that your application has been approved.</p>
+                    <p>Please find your details below:</p>
+                    <ul>
+                        <li><strong>Club:</strong> {club}</li>
+                        <li><strong>Position:</strong> {position}</li>
+                    </ul>
+                    <p>We look forward to your contributions and are excited to welcome you aboard.</p>
+                    <p>Sincerely,<br>The {club} Team</p>
+                </body>
+            </html>
+            """
+            # Example quota check; adjust the condition as needed.
+            if check_brevo_email_quota(Email_limit_API) > 50:
+                send_single_email.send(email, subject, content)
+                logging.info(f"Approval email sent to {email}")
+        else:
+            unsubscribe_link=f"http://127.0.0.1:5000/Unsuscribe?token={unsubscribe_token}"
+            subject = f"Stay Updated with the Latest News from Campus Connect : {club}"
+            content = f"""
+            <html>
             <body>
                 <p>Dear {name},</p>
-                <p>We are pleased to inform you that your application has been approved.</p>
-                <p>Please find your details below:</p>
+                <p>We hope this email finds you well! We're excited to have you as a part of our community here at <strong>Campus Connect</strong>. We’re committed to keeping you informed about the latest events, announcements, and activities within your college community.</p>
+
+                <h3>Recent Updates:</h3>
                 <ul>
-                    <li><strong>Club:</strong> {club}</li>
-                    <li><strong>Position:</strong> {position}</li>
+                    <li><strong>Club Events:</strong> Stay up-to-date with various student club activities.</li>
+                    <li><strong>College Announcements:</strong> Important news from your college campus.</li>
+                    <li><strong>Opportunities:</strong> Get involved in upcoming student projects and initiatives.</li>
                 </ul>
-                <p>We look forward to your contributions and are excited to welcome you aboard.</p>
-                <p>Sincerely,<br>The {club} Team</p>
+
+                <p>If you wish to unsubscribe from receiving these notifications, please click on the link below:</p>
+                <p><a href="{unsubscribe_link}">Unsubscribe from Notifications</a></p>
+
+                <p>Thank you for being a part of <strong>Campus Connect</strong>! If you have any questions or need assistance, feel free to reach out.</p>
+
+                <p>Best regards,<br> The Campus Connect Team</p>
+                
             </body>
-        </html>
-        """
-        # Example quota check; adjust the condition as needed.
-        if check_brevo_email_quota(Email_limit_API) > 50:
-            send_single_email(email, subject, content)
-            logging.info(f"Approval email sent to {email}")
+            </html>
+            """
+            
+            send_single_email.send(email,subject,content)
+            logging.info(f"Joined {club} from {email}")
+
     except Exception as e:
         logging.error(f"Failed to send approval email to {email}: {str(e)}")
 
@@ -320,6 +384,8 @@ class RegisterSchema(Schema):
     name = fields.Str(required=True)
 
 # API Routes
+
+
 @app.before_request
 def make_session_permanent():
     session.permanent = True
@@ -356,7 +422,7 @@ def login():
         session['user_id'] = user_id
         session['role'] = user['position']  # or any other info you need
         return jsonify({"message": "Login successful", "user_id": user_id, "name": user['name'], "position": user['position'], "course": user['course'], "club": user['club']}), 200
-    
+
     elif admin and check_password_hash(admin['password'], password):
         session.permanent = True
         session['user_id'] = user_id
@@ -451,7 +517,6 @@ def forgot_password():
     return jsonify({"message": "Password reset email sent."}), 200
 
 
-
 @app.route('/api/get_user/<string:user_id>', methods=['GET'])
 def get_user(user_id):
     try:
@@ -469,12 +534,12 @@ def get_user(user_id):
 
         cur.close()
         conn.close()
-        
+
         # If user exists, remove password field before returning
         if user:
             user = dict(user)  # Convert to dictionary (for pop to work)
             user.pop("password", None)
-            
+
             return jsonify(user), 200
         else:
             return jsonify({"error": "User not found"}), 404
@@ -502,7 +567,8 @@ def get_approvals(position, club_name):
 
         # Validate position
         if position not in approval_hierarchy:
-            return jsonify({"error": "Invalid position"}), 400
+            logging.info(f"Student-Coordinator of {club_name}")
+            return jsonify({"Club Members are automaticaly approved "})
 
         # Fetch approvals based on hierarchy
         if position == 'admin':
@@ -540,7 +606,7 @@ def approve_request(user_id):
     Approve a pending approval request and move it to the users table.
     """
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
 
     # Fetch the approval request
     cur.execute("SELECT * FROM approval WHERE user_id = %s", (user_id,))
@@ -570,7 +636,7 @@ def approve_request(user_id):
             approval["email"],
             approval["name"],
             approval["club"],
-            approval["position"]
+            approval["position"],unsubscribe_token="",isstudent=False
         )
         return jsonify({"message": "User approved and moved to users table"}), 200
 
@@ -591,7 +657,7 @@ def reject_request(id):
     Reject a pending approval request and move it to the rejected table.
     """
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
 
     # Fetch the approval request
     cur.execute("SELECT * FROM approval WHERE user_id = %s", (id,))
@@ -639,7 +705,7 @@ def get_all_users():
     """
     try:
         conn = get_db_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
 
         # Fetch approved users
         cur.execute(
@@ -669,7 +735,7 @@ def delete_user(user_id):
         logging.info(f"Received request to delete user with ID: {user_id}")
 
         conn = get_db_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
 
         # Log the search for the user
         logging.info(f"Checking if user with ID {
@@ -719,7 +785,7 @@ def reset_password():
         return jsonify({"error": "Token and new password are required"}), 400
 
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
         # Check if the token is valid
@@ -729,7 +795,7 @@ def reset_password():
 
         if not user:
             return jsonify({"error": "Invalid or expired token"}), 400
-        
+
         if datetime.utcnow() > user['reset_token_expiry']:
             return jsonify({"error": "Token expired"}), 400
         # Update the user's password and clear the reset token
@@ -754,60 +820,119 @@ def reset_password():
 
 @app.route('/api/send_message', methods=['POST'])
 def send_message():
-    """Sends a message to a user via email."""
+    """Sends a message to a user via email. And Emits Notiffication on Home-Page"""
     data = request.json
     role = data.get('role')
     message = data.get('message')
-    position=data.get('postion')
-    club=data.get('club')
-    
+    position = data.get('postion')
+    club = data.get('club')
+
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
-        emails=[]
-        if position=="student-coordinator":
+        emails = []
+        if position == "student-coordinator":
             # student database isnt created
-            
+            cur.execute("SELECT email FROM student_club_subscriptions WHERE club = %s AND notification_consent = %s", (club, True))
+            emails=cur.fetchall()
+            emails = [dict(row) for row in emails]
+            send_emails_apart_from_admin(message, position, emails, club)
+            logging.info(f"Email sent from {position} to members of {club}")           
+            send_notification.send(club, message)
             logging.info(f"Email sent to Students of{club}")
-            
-            
-        elif position=="Admin":
+
+        elif position == "Admin":
+
             cur.execute(
                 "SELECT email FROM users"
             )
-            emails=cur.fetchall()
+            emails = cur.fetchall()
             emails = [dict(row) for row in emails]
-            send_emails_from_admin(message,position,emails)
-            logging.info(f"Email sent from ADMIN to {role} of all clubs")  
-            
-            
-              
+            send_emails_from_admin(message, position, emails)
+            logging.info(f"Email sent from ADMIN to {role} of all clubs")
+
         else:
             cur.execute(
                 "SELECT email FROM users WHERE club = %s",
                 (club,)
             )
-            emails=cur.fetchall()
+            emails = cur.fetchall()
             emails = [dict(row) for row in emails]
-            send_emails_apart_from_admin(message,position,emails,club)
+            send_emails_apart_from_admin(message, position, emails, club)
             logging.info(f"Email sent from {position} to members of {club}")
-        
-        
-        
-        
+
         return jsonify({"message": "Message sent successfully"}), 200
 
-        
     except:
         conn.rollback()
-        logging.error({"Error while sending message:Likely to be beacause REDIS or DRMATIQ"})
+        logging.error(
+            {"Error while sending message:Likely to be beacause REDIS or DRMATIQ"})
         return jsonify({"error": "Something went wrong"}), 500
-    
+
     finally:
         cur.close()
         conn.close()
 
+@app.route('/Unsuscribe', methods=['GET'])
+def unsuscribe():
+    # Retrieve the token from the query parameter
+    token = request.args.get('token')
+
+    try:
+        if not token:
+            return jsonify({"error": "Token not provided"}), 400
+        if token:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("DELETE FROM student_club_subscriptions WHERE unsubscribe_token  = %s", (token,))
+            conn.commit()
+            cur.close()
+            conn.close()
+            logging.info(f"Student Deleted")
+            return render_template("./template/Unsuscribe.html")
+    except:
+        return jsonify("Invalid User"),500
+          
+@app.route('/api/ClubForm', methods=['POST'])
+def studentdata():
+    try:
+        data = request.get_json()
+        unsuscribe_token = secrets.token_urlsafe(32)
+        if not data:
+            return jsonify({"error": "No data received"}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        insert_query = '''
+        INSERT INTO student_club_subscriptions (name, student_id, email, year, club, notification_consent, unsubscribe_token)
+        VALUES (%s, %s, %s, %s, %s, %s, %s);
+        '''
+
+        data_tuple = (
+            data['name'],
+            data['studentId'],
+            data['email'],
+            data['year'],
+            data['club'],
+            data['notificationConsent'],
+            unsuscribe_token
+        )
+
+        # Execute the query
+        cursor.execute(insert_query, data_tuple)
+        conn.commit()
+        send_approval_email(data['email'],data['name'],data['club'],unsubscribe_token=unsuscribe_token,isstudent=True,position="")
+        print("Data inserted successfully.")
+
+        return jsonify({"message": "Successful"}), 200
+
+    except Exception as e:
+        print("Error:", e)
+        # Handle any unexpected errors
+        return jsonify({"error": "Something went wrong"}), 500
+
+
 # Run the Flask App
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    socketio.run(app, debug=True, port=5000)
