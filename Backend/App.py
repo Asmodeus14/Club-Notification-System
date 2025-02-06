@@ -1,3 +1,50 @@
+"""
+====================================================
+           Campus Connect Club Management System
+====================================================
+
+Created By: Team Heckers
+Creation Date: InProgress
+Last Updated: InProgress
+
+Project: Campus Connect - College Club Coordination Platform
+Version: 1.0.0
+Status: Local
+
+Team Members:
+- Abhay Singh (Backend Architect + Frontend)
+- Pratham Mohan (Frontend)
+- Aayushman Saxsena (Database Engineer)
+- Tarun Yadav (Dataflow Configurer)
+
+Description:
+A comprehensive platform for managing college club activities,
+member coordination, and event notifications. Developed for
+SRMU to streamline student organization operations.
+
+Repository: [https://github.com/Asmodeus14/Club-Notification-System]
+Contact: Singhabhay3145@gmail.com
+
+Dependencies:
+- Flask 3.0.2
+- PostgreSQL 15
+- Redis 7.2
+- Socket.IO 5.3.3
+
+License: MIT License
+Copyright (c) 2024 Team Heckers
+
+Configuration Requirements:
+- PostgreSQL database
+- Redis server
+- Brevo API key
+- Environment variables setup (API.env)
+
+====================================================
+            🚀 Powered by Flask & Vue.js 🛠️
+====================================================
+"""
+
 
 from psycopg2 import pool
 from flask import Flask, request, jsonify, g, session,render_template,abort
@@ -87,7 +134,8 @@ def no_user_found():
 # Add after app configuration:
 connection_pool = pool.SimpleConnectionPool(
     minconn=1,
-    maxconn=20,
+    maxconn=50,
+    connect_timeout=10,
     **app.config["DB_CONFIG"]
 )
 
@@ -569,7 +617,6 @@ def get_approvals(position, club_name):
 
         # Normalize position for case-insensitive comparison
         position = position.lower()
-
         # Define the valid approval hierarchy
         approval_hierarchy = {
             'admin': 'veteran-coordinator',
@@ -717,7 +764,7 @@ def get_all_users():
     """
     try:
         conn = get_db_connection()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur = conn.cursor()
 
         # Fetch approved users
         cur.execute(

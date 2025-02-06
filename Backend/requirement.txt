@@ -1,2 +1,13 @@
-Flask==2.2.3
-Werkzeug==2.2.3
+Flask
+Flask-Cors
+psycopg2
+psycopg2-binary
+werkzeug
+python-dotenv
+marshmallow
+secrets
+flask-limiter
+flask-socketio
+redis
+dramatiq
+sib-api-v3-sdk

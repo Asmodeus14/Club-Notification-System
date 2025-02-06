@@ -44,7 +44,7 @@
 
         <!-- Login Button with Loader -->
         <button type="submit" :disabled="isLoading"
-          class="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all flex items-center justify-center">
+          class="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all flex items-center justify-center relative">
           <span v-if="isLoading" class="loader"></span>
           <span v-else>Login</span>
         </button>
@@ -117,16 +117,13 @@ export default {
         if (response.status === 200 && response.data.user_id) {
           this.$router.push(`/dashboard/${response.data.user_id}`);
         } else {
-          // Handle specific backend error messages
           this.loginError = response.data.error || "Invalid credentials, please try again.";
         }
       } catch (error) {
         console.error("Login failed:", error);
-        // Use backend error message if available
-        const errorMessage = error.response?.data?.error ||
+        this.loginError = error.response?.data?.error ||
           error.response?.data?.message ||
           "An unexpected error occurred. Please try again.";
-        this.loginError = errorMessage;
       } finally {
         this.isLoading = false;
       }
@@ -134,3 +131,23 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.loader {
+  width: 24px;
+  height: 24px;
+  border: 3px solid transparent;
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+</style>

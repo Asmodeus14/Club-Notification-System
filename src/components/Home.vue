@@ -127,7 +127,9 @@ export default {
         new URL('@/assets/images/arts.jpg', import.meta.url).href,
         new URL('@/assets/images/sports.jpg', import.meta.url).href,
         new URL('@/assets/images/cultural.jpg', import.meta.url).href,
-        new URL('@/assets/images/tech-club.jpg', import.meta.url).href
+        new URL('@/assets/images/tech-club.jpg', import.meta.url).href,
+        new URL('@/assets/images/sports-club.jpg', import.meta.url).href,
+        new URL('@/assets/images/techfest.jpg', import.meta.url).href,
       ],
       currentSlide: 0,
       events: [],
