@@ -68,16 +68,20 @@ Email_limit_API = app.config["BREVO_API_KEY"]
 # Enable CORS securely
 CORS(app, resources={r"/*": {"origins": app.config["CORS_ORIGINS"]}})
 
-# Configure Logging
-logging.basicConfig(level=logging.INFO,
-                    format="%(asctime)s - %(levelname)s - %(message)s")
-
+# Set up logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Error Handeling
 
 @app.errorhandler(500)
 def not_found(error):
-    return render_template("505.html"), 500
+    return render_template("500.html"), 500
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template('404.html')
+@app.errorhandler(401)
+def no_user_found():
+    return render_template('401.html')
 
 
 # Add after app configuration:
@@ -99,6 +103,11 @@ def close_db_connection(exception=None):
     conn = getattr(g, '_database_connection', None)
     if conn is not None:
         connection_pool.putconn(conn)
+
+@app.route('/<path:path>', methods=['GET', 'POST'])
+def catch_all(path):
+    logging.error(f"404 Not Found: The requested API endpoint '{path}' does not exist")
+    abort(404)
 
 
 def init_db():
@@ -813,8 +822,8 @@ def reset_password():
 
     except Exception as e:
         conn.rollback()
-        logging.error(f"Error resetting password: {str(e)}")
-        return jsonify({"error": "Something went wrong"}), 500
+        logging.error(f"Error during unsubscribe: {str(e)}")
+        abort(500, description="Internal server error")
 
     finally:
         cur.close()
@@ -885,28 +894,47 @@ def send_message():
     finally:
         cur.close()
         conn.close()
-
+        
 @app.route('/Unsuscribe', methods=['GET'])
 def unsuscribe():
     # Retrieve the token from the query parameter
     token = request.args.get('token')
+    
+    if not token:
+        abort(400, description="Token not provided")
 
     try:
-        if not token:
-            return jsonify({"error": "Token not provided"}), 400
-        if token:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("DELETE FROM student_club_subscriptions WHERE unsubscribe_token  = %s", (token,))
-            conn.commit()
-            cur.close()
-            conn.close()
-            logging.info(f"Student Deleted")
-            abort(500,"Invalid User")
-            return jsonify("Deleted"),200
-    except:
-        abort(500,"Invalid User")
+        # Establish a database connection
+        conn = get_db_connection()
+        cur = conn.cursor()
 
+        # Check if the token exists in the subscriptions table
+        cur.execute("SELECT * FROM student_club_subscriptions WHERE unsubscribe_token = %s", (token,))
+        user = cur.fetchone()
+
+        if user is None:  # Check if no user was found
+            abort(404, description="Invalid token")
+
+        # Proceed with unsubscribing the user if the token is valid
+        cur.execute("DELETE FROM student_club_subscriptions WHERE unsubscribe_token = %s", (token,))
+        conn.commit()
+
+        # Log the deletion with more specific details (e.g., user_id)
+        logging.info(f"User with token {token} unsubscribed successfully")
+
+        return jsonify({"message": "Successfully unsubscribed"}), 200
+    except Exception as e:
+        # Catch unexpected errors and log them
+        if  '404 Not Found: Invalid token' in {str(e)}:
+            abort(404, description="Invalid token")
+        logging.error(f"Error during unsubscribe: {str(e)}")
+        abort(500, description="Internal server error")
+    
+    finally:
+        # Ensure the cursor and connection are closed
+        cur.close()
+        conn.close()
+        
 @app.route('/api/events', methods=['GET'])
 def get_events():
     try:
@@ -971,7 +999,7 @@ def studentdata():
 
     except Exception as e:
         print("Error:", e)
-        # Handle any unexpected errors
+        
         return jsonify({"error": "Something went wrong"}), 500
 
 

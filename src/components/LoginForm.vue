@@ -4,10 +4,15 @@
       <h1 class="text-3xl font-bold text-white text-center mb-2">Welcome Back</h1>
       <p class="text-white text-center mb-6">Login to continue</p>
 
+      <!-- Error Message -->
+      <div v-if="loginError" class="mb-4 p-3 bg-red-900 bg-opacity-20 rounded-lg">
+        <p class="text-red-300 text-center text-sm">{{ loginError }}</p>
+      </div>
+
       <form @submit.prevent="handleLogin">
         <!-- ID Input -->
         <div class="relative mb-6">
-          <input type="text" id="ID" v-model="formData.user_id" required
+          <input type="text" id="ID" v-model="formData.user_id" required @input="loginError = null"
             class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
             placeholder="User ID" />
           <label for="ID"
@@ -19,6 +24,7 @@
         <!-- Password Input with Toggle -->
         <div class="relative mb-6">
           <input :type="isPasswordVisible ? 'text' : 'password'" id="password" v-model="formData.password" required
+            @input="loginError = null"
             class="peer w-full p-4 bg-transparent border border-white rounded-xl text-white placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
             placeholder="Password" />
           <label for="password"
@@ -81,7 +87,7 @@ export default {
         password: '',
       },
       isPasswordVisible: false,
-      isLoading: false, // Added loading state
+      isLoading: false,
       loginError: null,
     };
   },
@@ -111,11 +117,16 @@ export default {
         if (response.status === 200 && response.data.user_id) {
           this.$router.push(`/dashboard/${response.data.user_id}`);
         } else {
-          this.loginError = "Invalid credentials, please try again.";
+          // Handle specific backend error messages
+          this.loginError = response.data.error || "Invalid credentials, please try again.";
         }
       } catch (error) {
         console.error("Login failed:", error);
-        this.loginError = error.response?.data?.error || "An unexpected error occurred. Please try again.";
+        // Use backend error message if available
+        const errorMessage = error.response?.data?.error ||
+          error.response?.data?.message ||
+          "An unexpected error occurred. Please try again.";
+        this.loginError = errorMessage;
       } finally {
         this.isLoading = false;
       }
@@ -123,19 +134,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-.loader {
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-top: 3px solid white;
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-</style>
