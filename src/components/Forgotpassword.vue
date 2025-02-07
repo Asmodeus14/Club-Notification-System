@@ -50,6 +50,7 @@
 
 <script>
 import axios from 'axios';
+import { url } from './data/url';
 
 export default {
   name: "ForgotPassword",
@@ -85,7 +86,7 @@ export default {
 
       try {
         const response = await axios.post(
-          'http://127.0.0.1:5000/api/forgot',
+          `${url}/api/forgot`,
           new URLSearchParams(this.formData),
           {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

@@ -77,6 +77,7 @@
 
 <script>
 import axios from 'axios';
+import { url } from './data/url';
 
 export default {
   name: "LoginForm",
@@ -107,7 +108,7 @@ export default {
       this.loginError = null;
       try {
         const response = await axios.post(
-          'http://127.0.0.1:5000/api/login',
+          `${url}/api/login`,
           new URLSearchParams(this.formData),
           {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

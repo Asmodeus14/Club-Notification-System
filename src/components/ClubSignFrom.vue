@@ -92,6 +92,7 @@ import { reactive } from 'vue'
 import { useVuelidate } from '@vuelidate/core'
 import { required, email, numeric } from '@vuelidate/validators'
 import { clubCategories } from './data/club'
+import { url } from './data/url'
 import axios from 'axios';
 
 export default {
@@ -134,7 +135,7 @@ export default {
       const isValid = await this.v$.$validate();
       if (isValid ) {
         try {
-          const response = await axios.post("http://127.0.0.1:5000/api/ClubForm", this.formData);
+          const response = await axios.post(`${url}/api/ClubForm`, this.formData);
   
           if (response.status==200){
             this.$router.push('/');}

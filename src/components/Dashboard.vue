@@ -96,6 +96,7 @@
 
 <script>
 import axios from 'axios';
+import { url } from './data/url';
 
 export default {
   name: "AdministratorManager",
@@ -123,7 +124,7 @@ export default {
   methods: {
     async fetchUserData() {
       try {
-        const response = await axios.get(`http://127.0.0.1:5000/api/get_user/${this.user_id_local}`);
+        const response = await axios.get(`${url}/api/get_user/${this.user_id_local}`);
         this.userdata = response.data;
         this.fetchRequests();
       } catch (error) {
@@ -136,7 +137,7 @@ export default {
     async fetchRequests() {
       if (!this.userdata.position) return;
       try {
-        const response = await axios.get(`http://127.0.0.1:5000/api/approvals/${this.userdata.position}-${this.userdata.club}`);
+        const response = await axios.get(`${url}/api/approvals/${this.userdata.position}-${this.userdata.club}`);
         this.requests = response.data.pending || {};
         this.processedRequests = response.data.processed || {};
         console.log("Requests:", this.requests, "Processed:", this.processedRequests);
@@ -147,7 +148,7 @@ export default {
     async approveRequest(request) {
       try {
         console.log("Approving User ID:", request.user_id);
-        await axios.post(`http://127.0.0.1:5000/api/approve/${request.user_id}`);
+        await axios.post(`${url}/api/approve/${request.user_id}`);
         this.fetchRequests();
       } catch (error) {
         console.error("Error approving request:", error);
@@ -158,7 +159,7 @@ export default {
     async rejectRequest(request) {
       try {
         console.log("Rejecting User ID:", request.user_id);
-        await axios.post(`http://127.0.0.1:5000/api/reject/${request.user_id}`);
+        await axios.post(`${url}/api/reject/${request.user_id}`);
         this.fetchRequests();
       } catch (error) {
         console.error("Error rejecting request:", error);
@@ -169,7 +170,7 @@ export default {
     async deleteApproved(request) {
       if (this.userdata.position === 'Admin') {
         try {
-          await axios.delete(`http://127.0.0.1:5000/api/delete/${request.user_id}`);
+          await axios.delete(`${url}/api/delete/${request.user_id}`);
           this.fetchRequests();
         } catch (error) {
           console.error("Error deleting approved request:", error);
@@ -192,7 +193,7 @@ export default {
 
       try {
 
-        await axios.post('http://127.0.0.1:5000/api/send_message', {
+        await axios.post(`${url}/api/send_message`, {
           role: this.selectedRole,
           message: this.messageText,
           postion:this.userdata['position'],

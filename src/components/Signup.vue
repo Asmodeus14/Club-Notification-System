@@ -128,6 +128,7 @@
 
 <script>
 import axios from 'axios';
+import { url } from './data/url';
 
 export default {
   name: "SignupForm",
@@ -245,7 +246,7 @@ export default {
       this.isSubmitting = true;
       try {
         await axios
-        .post('http://127.0.0.1:5000/api/register', new URLSearchParams(this.formdata), {
+        .post(`${url}/api/register`, new URLSearchParams(this.formdata), {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         }).then(response => console.log(response))
         .catch(error => console.log(error.response));

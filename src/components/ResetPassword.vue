@@ -55,6 +55,7 @@
   
   <script>
   import axios from 'axios';
+  import { url } from './data/url';
   
   export default {
     name: "ResetPassword",
@@ -101,7 +102,7 @@
   
         try {
           const response = await axios.post(
-            'http://127.0.0.1:5000/api/reset-password',
+            `${url}/api/reset-password`,
             {
               token: this.resetToken,
               new_password: this.newPassword,

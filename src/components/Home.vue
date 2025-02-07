@@ -115,6 +115,7 @@
 import io from 'socket.io-client';
 import NotificationPermission from './Notification.vue';
 import axios from 'axios'
+import { url,websocket } from './data/url';
 export default {
   name: 'HomePage',
   components: { NotificationPermission },
@@ -137,7 +138,7 @@ export default {
     };
   },
   mounted() {
-    this.socket = io('http://localhost:5000'); // Use socket.io-client here instead of WebSocket
+    this.socket = io(websocket); // Use socket.io-client here instead of WebSocket
     this.socket.on('notification', (data) => {
       this.notifications.unshift({ ...data, timestamp: new Date() });
       this.showBrowserNotification(data.message);
@@ -169,7 +170,7 @@ export default {
     async fetchEvents() {
       this.loadingEvents = true;
       try {
-        const response = await axios.get('http://127.0.0.1:5000/api/events');
+        const response = await axios.get(`${url}/api/events`);
         this.events = response.data;
       } catch (error) {
         console.error('Error fetching events:', error);
