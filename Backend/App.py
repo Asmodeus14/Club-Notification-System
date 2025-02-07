@@ -89,7 +89,7 @@ class Config:
 
 app = Flask(__name__,template_folder=os.path.join(os.getcwd(), 'template'))
 app.config.from_object(Config)
-socketio = SocketIO(app, cors_allowed_origins="http://localhost:8080",message_queue="redis://localhost:6379")
+socketio = SocketIO(app, cors_allowed_origins="*",message_queue="redis://localhost:6379")
 
 
 @socketio.on('connect')
