@@ -4,7 +4,7 @@ module.exports = {
       port: 8080,
       client: {
         webSocketURL: {
-          hostname: '87fb-103-176-170-230.ngrok-free.app', // Replace with your actual hostname
+          hostname: '755e-103-176-170-230.ngrok-free.app', // Replace with your actual hostname
           port: 443, // Use HTTPS port
           pathname: '/ws',
           protocol: 'wss:', // Secure WebSocket
