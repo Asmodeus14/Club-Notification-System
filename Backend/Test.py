@@ -1,50 +1,3 @@
-"""
-====================================================
-           Campus Connect Club Management System
-====================================================
-
-Created By: Team Heckers
-Creation Date: InProgress
-Last Updated: InProgress
-
-Project: Campus Connect - College Club Coordination Platform
-Version: 1.0.0
-Status: Local
-
-Team Members:
-- Abhay Singh (Backend Architect + Frontend)
-- Pratham Mohan (Frontend)
-- Aayushman Saxsena (Database Engineer)
-- Tarun Yadav (Dataflow Configurer)
-
-Description:
-A comprehensive platform for managing college club activities,
-member coordination, and event notifications. Developed for
-SRMU to streamline student organization operations.
-
-Repository: [https://github.com/Asmodeus14/Club-Notification-System]
-Contact: Singhabhay3145@gmail.com
-
-Dependencies:
-- Flask 3.0.2
-- PostgreSQL 15
-- Redis 7.2
-- Socket.IO 5.3.3
-
-License: MIT License
-Copyright (c) 2024 Team Heckers
-
-Configuration Requirements:
-- PostgreSQL database
-- Redis server
-- Brevo API key
-- Environment variables setup (API.env)
-
-====================================================
-            🚀 Powered by Flask & Vue.js 🛠️
-====================================================
-"""
-
 
 from psycopg2 import pool
 from flask import Flask, request, jsonify, g, session,render_template,abort
@@ -57,7 +10,7 @@ from dotenv import load_dotenv
 import os
 from marshmallow import Schema, fields, ValidationError
 import secrets
-from email_ import send_single_email, send_notification
+from Backend.Docker import send_single_email, send_notification
 from Email_Limit import check_brevo_email_quota, add_to_email_queue
 from datetime import datetime, timedelta
 from flask_limiter import Limiter
@@ -89,7 +42,7 @@ class Config:
 
 app = Flask(__name__,template_folder=os.path.join(os.getcwd(), 'template'))
 app.config.from_object(Config)
-socketio = SocketIO(app, cors_allowed_origins="*",message_queue="redis://localhost:6379")
+socketio = SocketIO(app, cors_allowed_origins="http://localhost:8080",message_queue="redis://localhost:6379")
 
 
 @socketio.on('connect')

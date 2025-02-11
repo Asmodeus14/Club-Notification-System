@@ -10,12 +10,24 @@ import ResetPassword from './components/ResetPassword.vue';
 import HomePage from './components/Home.vue';
 import ClubsPage from './components/Clubs.vue';
 import ClubSignFrom from './components/ClubSignFrom.vue';
+import MainPage from './components/Main.vue';
+import ChatRoom from './components/ChatRoom.vue';
 
 const routes = [
     {
         path:'/',
         name:'Home-Page',
         component:HomePage,
+    },
+    {
+        path:'/main',
+        name:'Main-Page',
+        component:MainPage,
+    },
+    {
+        path:'/chatroom',
+        name:'ChatRoom',
+        component:ChatRoom,
     },
     {
         path: '/login',

@@ -7,3 +7,4 @@ export const clubCategories = {
   'sportsClubs': ['Sportizz'],
   'socialInitiativesClubs': ['Power Angels', 'Ozone', 'Golden Pen', 'Razzmatazz', 'Manch']
   }
+

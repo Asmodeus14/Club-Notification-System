@@ -5,7 +5,7 @@
     <!-- Navigation Bar -->
     <nav
       class="flex justify-between items-center bg-white bg-opacity-10 backdrop-blur-md text-white p-4 rounded-lg w-full max-w-full shadow-lg">
-      <router-link to="/" class="text-2xl font-bold hover:scale-105 transition-transform">Campus Connect</router-link>
+      <router-link to="/main" class="text-2xl font-bold hover:scale-105 transition-transform">Campus Connect</router-link>
       <div class="flex gap-4">
         <router-link to="/login" class="hover:opacity-80 hover:text-indigo-300 transition">Login</router-link>
         <router-link to="/signup" class="hover:opacity-80 hover:text-indigo-300 transition">Sign Up</router-link>

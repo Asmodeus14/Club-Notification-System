@@ -36,7 +36,7 @@ def check_brevo_email_quota(api_key):
 import redis
 import json
 from datetime import datetime
-from email_ import process_email_queue
+from Docker import process_email_queue
 # Connect to Redis
 redis_client = redis.Redis(host='localhost', port=6379, db=0)
 

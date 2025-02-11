@@ -143,7 +143,7 @@ def process_email_queue():
 
 @dramatiq.actor
 def send_notification(user_id, message):
-    from App2 import socketio
+    from Backend.Test import socketio
     # Simulate a background process delay
     time.sleep(2)
     

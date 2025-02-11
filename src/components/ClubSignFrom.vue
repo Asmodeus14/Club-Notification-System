@@ -78,8 +78,7 @@
       <!-- Form Actions -->
       <div class="mt-8">
         <button type="submit" class="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors 
-                               disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="v$.$invalid ">
+                               disabled:opacity-50 disabled:cursor-not-allowed" :disabled="v$.$invalid">
           Register
         </button>
       </div>
@@ -133,13 +132,14 @@ export default {
     },
     async handleSubmit() {
       const isValid = await this.v$.$validate();
-      if (isValid ) {
+      if (isValid) {
         try {
           const response = await axios.post(`${url}/api/ClubForm`, this.formData);
-  
-          if (response.status==200){
-            this.$router.push('/');}
-          
+
+          if (response.status == 200) {
+            this.$router.push('/');
+          }
+
         } catch (error) {
           console.error('Error submitting form:', error);
           // Handle the error appropriately (e.g., show an error message)
