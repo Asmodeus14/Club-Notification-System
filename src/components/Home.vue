@@ -138,7 +138,7 @@ export default {
     };
   },
   mounted() {
-    this.socket = io(websocket,transports: ["websocket", "polling"]); // Use socket.io-client here instead of WebSocket
+    this.socket = io(websocket, { transports: ["websocket", "polling"] }); // Connect to the server
     this.socket.on('notification', (data) => {
       this.notifications.unshift({ ...data, timestamp: new Date() });
       this.showBrowserNotification(data.message);
