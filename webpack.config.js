@@ -4,7 +4,7 @@ module.exports = {
     port: 8080,
     client: {
       webSocketURL: {
-        hostname: "club-notification-backend.vercel.app", // Your backend domain
+        hostname: "https://club-notification-backend-1.onrender.com", // Your backend domain
         port: 443, // HTTPS WebSocket
         pathname: "/socket.io/",
         protocol: "wss:", // Secure WebSocket
@@ -12,7 +12,7 @@ module.exports = {
     },
     proxy: {
       "/socket.io/": {
-        target: "https://club-notification-backend.vercel.app", // Backend URL
+        target: "https://club-notification-backend-1.onrender.com", // Backend URL
         ws: true, // Enable WebSocket proxying
         changeOrigin: true,
       },
