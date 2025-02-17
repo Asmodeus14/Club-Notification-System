@@ -97,8 +97,8 @@
 
 <script>
 import anime from "animejs";
-import axios from "axios";
-import { url1 } from "./data/url";
+// import axios from "axios";
+// import { url1 } from "./data/url";
 
 export default {
     name: "MainPage",
@@ -115,7 +115,7 @@ export default {
                 {
                     id: 1,
                     user: {
-                        name: "Alice Smith",
+                        name: "TechFusion Club",
                         avatar: "https://source.unsplash.com/random/100x100/?face"
                     },
                     image: "https://source.unsplash.com/random/800x600/?campus",
@@ -127,17 +127,26 @@ export default {
                 {
                     id: 2,
                     user: {
-                        name: "Bob Johnson",
+                        name: "TechFusion Club",
                         avatar: "https://source.unsplash.com/random/100x100/?face"
                     },
                     image: "https://source.unsplash.com/random/800x600/?college",
-                    caption: "New sports facilities are awesome! 🏀",
+                    caption: "HAckathon coming soon!",
                     likes: 28,
                     liked: true,
                     comments: []
                 }
             ],
             chats: [
+                {
+                    id: 1,
+                    user: {
+                        name: "CLub",
+                        avatar: "https://source.unsplash.com/random/100x100/?face"
+                    },
+                    lastMessage: "Click ME! to enter the chatroom",
+                    messages: []
+                }
             ]
         };
     },
@@ -194,16 +203,16 @@ export default {
                 delay: anime.stagger(100)
             });
         },
-        getchats(){
-            axios.post(`${url1}/chats${this.currentUser}`).then((response) => {
-                this.chats = response.data;
-            });
-        }
+        // getchats(){
+        //     axios.post(`${url1}/chats${this.currentUser}`).then((response) => {
+        //         this.chats = response.data;
+        //     });
+        // }
     },
     mounted() {
         this.animatePosts();
         this.checkmesseage();
-        this.getchats();
+        // this.getchats();
     }
 };
 </script>
