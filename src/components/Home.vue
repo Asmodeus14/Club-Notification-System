@@ -103,6 +103,7 @@
   <!-- Footer -->
   <footer class="bg-gray-800 text-white text-center py-4  w-full">
     <p>&copy; 2025 Campus Connect. All rights reserved.</p>
+    <p>Developed By Abhay Singh & Pratham Mohan</p>
     <div class="flex justify-center gap-4 mt-2">
       <a href="#" class="hover:text-indigo-400 transition">Privacy Policy</a>
       <a href="#" class="hover:text-indigo-400 transition">Terms of Service</a>
